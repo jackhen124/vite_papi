@@ -40,6 +40,33 @@ async function getBlizzardAccessToken() {
 }
 
 
+function componentDidMount(){
+  fetchData();
+}
+
+async function fetchData() {
+  console.log('Fetching data...')
+  try {
+    const accessToken = await getBlizzardAccessToken();
+
+    const headers = {
+      Authorization: `Bearer ${accessToken}`,
+    };
+
+    const response = await axios.get('https://us.api.blizzard.com/hearthstone/cards', { headers });
+
+    if (response.status === 200) {
+      const first10Cards = response.data.cards.slice(0, 10); // Slice the first 10 cards
+      // Update your React state with the first10Cards array
+      setCards(first10Cards); // Assuming you have a state variable called 'cards'
+    } else {
+      throw new Error(`Failed to fetch cards: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Error fetching cards:', error);
+    // Handle errors appropriately
+  }
+}
 
 interface BlizzardCard {
   // Define the expected structure of a Hearthstone card from the API
@@ -49,9 +76,12 @@ interface BlizzardCard {
   // Add other relevant card properties based on the API response
 }
 
+interface AppState {
+  cards: BlizzardCard[]; // Array to hold fetched cards
+}
 
 
-function App(): JSX.Element{
+function App(): React.FC {
   const [cards, setCards] = useState<BlizzardCard[]>([]); // Initialize cards state
 
   async function fetchData() {
@@ -61,12 +91,11 @@ function App(): JSX.Element{
       const headers = {
         Authorization: `Bearer ${accessToken}`,
       };
-      const url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-      const response = await axios.get(url, { headers });
-      
+
+      const response = await axios.get<BlizzardCard[]>('https://us.api.blizzard.com/hearthstone/cards', { headers });
+
       if (response.status === 200) {
-        
-        const first10Cards = response.data.cards.slice(0, 10);
+        const first10Cards = response.data.slice(0, 10);
         setCards(first10Cards); // Update state with the first 10 cards
       } else {
         throw new Error(`Failed to fetch cards: ${response.statusText}`);
@@ -85,7 +114,7 @@ function App(): JSX.Element{
     <div>
       {cards.length > 0 ? (
         <ul>
-          {cards.map((card: BlizzardCard) => (
+          {cards.map((card: BlizzardCard) => ( // Use type annotation for card
             <li key={card.id}>
               {/* Display card information here using card.name, card.type, etc. */}
               {card.name} ({card.type})
