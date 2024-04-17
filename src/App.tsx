@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Component, useState } from 'react'
 
 import './App.css'
 
@@ -6,7 +6,8 @@ import axios from 'axios';
 import { Buffer } from 'buffer';
 import { useEffect } from 'react';
 import { render } from 'react-dom';
-
+import fs from 'fs';
+import { mockData } from './mockData';
 
 const clientId = process.env.VITE_CLIENT_ID ?? '';
 const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
@@ -45,58 +46,237 @@ interface BlizzardCard {
   // Define the expected structure of a Hearthstone card from the API
   id: number;
   name: string;
+  tier: string;
+  image: string;
+  text: string;
+  tribeIds: number[];
   type: string;
   // Add other relevant card properties based on the API response
 }
 
 
 
-function App(): JSX.Element{
-  const [cards, setCards] = useState<BlizzardCard[]>([]); // Initialize cards state
+interface AppState {
+  cards: {
+    "minion": BlizzardCard[],
+    "hero": BlizzardCard[],
+    "spell": BlizzardCard[],
+    "other": BlizzardCard[]
+  };
+  curCardType: string;
+}
 
-  async function fetchData() {
-    try {
-      const accessToken = await getBlizzardAccessToken();
-
-      const headers = {
-        Authorization: `Bearer ${accessToken}`,
-      };
-      const url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-      const response = await axios.get(url, { headers });
-      
-      if (response.status === 200) {
-        
-        const first10Cards = response.data.cards.slice(0, 10);
-        setCards(first10Cards); // Update state with the first 10 cards
-      } else {
-        throw new Error(`Failed to fetch cards: ${response.statusText}`);
+function tribeIdsToWords(minionIds: number[]) {
+  //console.log("minionTypeIdsToWords = ", minionIds)
+  const result: string[] = [];
+  const conversionDict: { [key: number]: string } = {
+    11: 'Undead',
+    14: 'Murloc',
+    15: 'Demon',
+    17: 'Mech',
+    23: 'pirate',
+    24: 'Dragon',
+    43: 'Quilboar',
+  };
+  if (minionIds) {
+    minionIds.forEach((minionId) => {
+      if (conversionDict[minionId] !== undefined) {
+        //console.log("minionTypeWords[minionId] = ", conversionDict[minionId])
+        result.push(conversionDict[minionId]);
+      }else{
+        result.push(conversionDict[minionId]);
       }
-    } catch (error) {
-      console.error('Error fetching cards:', error);
-      // Handle errors appropriately in your component
-    }
+    });
+  }
+  
+  //console.log("minionTypeIdsToWords = ", result)
+  return result
+}
+
+function cardGroupDisplay(cards: BlizzardCard[]) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around' }}>
+      {cards.map((card: BlizzardCard) => (
+        cardDisplay(card)
+      ))}
+    </div>
+  )
+}
+
+function cardTypeTab(type: string){
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+      <button onClick={() => {console.log('clicked ', type)}}>{type}</button>
+    </div>
+  )
+}
+
+function cardDisplay(card: BlizzardCard){
+
+    let result = null;
+    
+    result =
+    <div key={card.id} style={{ width: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+      <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
+      
+      <div style={{ textAlign: 'center' }}>
+        {card.name}
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
+      </div>
+    </div>
+    
+    return result;
+  
+}
+
+class App extends Component<object, AppState> {
+  
+  state: AppState = {
+    cards: {
+      "minion": [],
+      "hero": [],
+      "spell": [],
+      "other": [],
+    },
+    curCardType: "minion",
+  };
+
+  async getMockData(){
+    const result = mockData;
+    //console.log('Getting mock data ', result)
+    
+    return result;
+    
   }
 
-  useEffect(() => {
-    fetchData();
-  }, []); // Empty dependency array ensures fetchData runs only once
+  componentDidMount() {
+    console.log('Component did mount')
+    this.fetchData();
+  }
 
-  return (
-    <div>
-      {cards.length > 0 ? (
-        <ul>
-          {cards.map((card: BlizzardCard) => (
-            <li key={card.id}>
-              {/* Display card information here using card.name, card.type, etc. */}
-              {card.name} ({card.type})
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>Loading cards...</p>
-      )}
-    </div>
-  );
+  getCardTypeFromData(cardData: any) {
+    let result = "minion";
+    if (cardData.battlegrounds.hero == true) {
+      result = 'hero';
+    } else if (cardData.battlegrounds.quest == true) {
+      result = 'quest';
+    } else if ("spellSchoolId" in cardData) {
+      result = 'spell';
+    }
+
+    return result;
+  }
+
+  async fetchData() {
+    console.log('Fetching data...')
+    
+    
+    
+    
+    const tempCards: { [key: string]: BlizzardCard[] } = {};
+
+    Object.keys(this.state.cards).forEach((type) => {
+      
+      tempCards[type] = [];
+
+    });
+    console.log('tempCards = ', tempCards);
+    
+    let apiData = null;
+    const useLocalData = true;
+    if (useLocalData){
+      
+      apiData = await this.getMockData();
+      console.log("local api data = ", apiData)
+    
+    }else{
+      try{
+        const accessToken = await getBlizzardAccessToken();
+
+        const headers = {
+          Authorization: `Bearer ${accessToken}`,
+        };
+        let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
+        url += '&pageSize=100'
+        //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
+  
+        const response = await axios.get(url, { headers });
+        apiData = response.data;
+      }catch(error){
+        console.error('Error fetching data from api:', error);
+      }
+      
+    }
+    if (apiData) {
+      
+      apiData.cards.forEach((cardData: any) => {
+        
+        const type = this.getCardTypeFromData(cardData);
+        let tribeIds = []
+        
+        tribeIds.push(cardData.minionTypeId)
+        cardData.multiClassIds.forEach((id: any) => {
+          console.log("ADDITIONAL  id = ", id)
+          tribeIds.push(id)
+        });
+        
+        const newCard: BlizzardCard = {
+          id: cardData.id,
+          name: cardData.name,
+          tier: cardData.battlegrounds.tier,
+          image: cardData.battlegrounds.image,
+          text: cardData.text,
+          type: type,
+          tribeIds: tribeIds
+        };
+        
+        try{
+          tempCards[type].push(newCard);
+        }catch(error){
+          console.error('Error adding ',type,' card to tempCards:', tempCards);
+        }
+        
+          
+        
+      });
+      //const sortedMinions = minions.sort((a, b) => a.tier - b.tier);
+      for (const type in tempCards) {
+        console.log(`${type} size = ${tempCards[type].length}`)
+      }
+      this.setState({
+        cards: {
+          "minion": tempCards.minion,
+          "hero": tempCards.hero,
+          "spell": tempCards.spell,
+          "other": tempCards.other,
+        }
+      });
+      
+    } else {
+      throw new Error(`Failed to fetch cards: ${response.statusText}`);
+    }
+    
+  }
+  
+
+  render() {
+    const curCardGroup = this.state.cards[this.state.curCardType];
+    console.log('curCardGroup  size = ', curCardGroup.length)
+    return (
+      
+      <div>
+        {curCardGroup.length > 0 ? (
+          <ul>
+            {cardGroupDisplay(curCardGroup)}
+          </ul>
+        ) : (
+          <p>Loading cards...</p>
+        )}
+      </div>
+    );
+  }
 }
 
 export default App;
