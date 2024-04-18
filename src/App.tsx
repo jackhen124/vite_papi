@@ -103,13 +103,7 @@ function cardGroupDisplay(cards: BlizzardCard[]) {
   )
 }
 
-function cardTypeTab(type: string){
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
-      <button onClick={() => {console.log('clicked ', type)}}>{type}</button>
-    </div>
-  )
-}
+
 
 function cardDisplay(card: BlizzardCard){
 
@@ -150,7 +144,22 @@ class App extends Component<object, AppState> {
     return result;
     
   }
+  cardTypeTab(type: string){
 
+    return (
+      <button 
+        onClick={() => this.cardTypeTabClicked(type)}
+        style={{ margin: '10px', padding: '10px' }}
+      >
+        {type}
+      </button>
+    );
+  }
+  cardTypeTabClicked(type: string){
+    
+    this.setState({ curCardType: type });
+  
+  }
   componentDidMount() {
     console.log('Component did mount')
     this.fetchData();
@@ -263,18 +272,20 @@ class App extends Component<object, AppState> {
 
   render() {
     const curCardGroup = this.state.cards[this.state.curCardType];
-    console.log('curCardGroup  size = ', curCardGroup.length)
+    console.log('curCardGroup  size = ', curCardGroup.length);
     return (
-      
-      <div>
-        {curCardGroup.length > 0 ? (
-          <ul>
-            {cardGroupDisplay(curCardGroup)}
-          </ul>
-        ) : (
-          <p>Loading cards...</p>
-        )}
-      </div>
+      <>
+        {Object.keys(this.state.cards).map((cardType: string) => this.cardTypeTab(cardType))}
+        <div>
+          {curCardGroup.length > 0 ? (
+            <ul>
+              {cardGroupDisplay(curCardGroup)}
+            </ul>
+          ) : (
+            <p>Loading cards...</p>
+          )}
+        </div>
+      </>
     );
   }
 }
