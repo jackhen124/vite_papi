@@ -7,7 +7,7 @@ import { Buffer } from 'buffer';
 //import { useEffect } from 'react';
 //import { render } from 'react-dom';
 //import fs from 'fs';
-import { mockData } from '../mockData';
+import { mockData } from './mockData';
 
 
 
@@ -195,7 +195,7 @@ class App extends Component<object, AppState> {
     console.log('tempCards = ', tempCards);
     
     let apiData = null;
-    const useLocalData = false;
+    const useLocalData = true;
     if (useLocalData){
       
       apiData = await this.getMockData();
