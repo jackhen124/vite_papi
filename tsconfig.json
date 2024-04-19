@@ -20,6 +20,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
+<<<<<<< Updated upstream
   "include": ["src", "src/mockData.tsx"],
+=======
+  "include": ["src", "mockData.tsx"],
+>>>>>>> Stashed changes
   "references": [{ "path": "./tsconfig.node.json" }]
 }

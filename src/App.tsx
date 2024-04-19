@@ -4,10 +4,17 @@ import './App.css'
 
 import axios from 'axios';
 import { Buffer } from 'buffer';
+<<<<<<< Updated upstream
 //import { useEffect } from 'react';
 //import { render } from 'react-dom';
 //import fs from 'fs';
 import { mockData } from './mockData';
+=======
+import { useEffect } from 'react';
+import { render } from 'react-dom';
+import fs from 'fs';
+import { mockData } from '../mockData';
+>>>>>>> Stashed changes
 
 
 
@@ -195,7 +202,7 @@ class App extends Component<object, AppState> {
     console.log('tempCards = ', tempCards);
     
     let apiData = null;
-    const useLocalData = true;
+    const useLocalData = false;
     if (useLocalData){
       
       apiData = await this.getMockData();
