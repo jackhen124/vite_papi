@@ -16,10 +16,12 @@ import { mockData } from './mockData';
 async function getBlizzardAccessToken() {
   console.log('Fetching access token...')
   try {
-    const clientId = process.env.VITE_CLIENT_ID ?? '';
-    const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
+    const clientId = import.meta.env.VITE_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
+    //const clientId = process.env.VITE_CLIENT_ID;
+    //const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
     console.log('clientId = ', clientId)
-    console.log('clientSecret = ', clientSecret)
+    console.log('clientSecret = ', clientId)
     const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const headers = {
       Authorization: `Basic ${authorization}`,
@@ -195,7 +197,7 @@ class App extends Component<object, AppState> {
     console.log('tempCards = ', tempCards);
     
     let apiData = null;
-    const useLocalData = true;
+    const useLocalData = false;
     if (useLocalData){
       
       apiData = await this.getMockData();
