@@ -266,8 +266,8 @@ class App extends Component<object, AppState> {
           
         
       });
-      tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier as number);
-      tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier as number);
+      tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
+      tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
       for (const type in tempCards) {
         console.log(`${type} size = ${tempCards[type].length}`)
       }
