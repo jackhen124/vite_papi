@@ -21,7 +21,7 @@ async function getBlizzardAccessToken() {
     //const clientId = process.env.VITE_CLIENT_ID;
     //const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
     console.log('clientId = ', clientId)
-    console.log('clientSecret = ', clientId)
+    console.log('clientSecret = ', clientSecret)
     const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const headers = {
       Authorization: `Basic ${authorization}`,
