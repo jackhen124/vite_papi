@@ -20,8 +20,8 @@ async function getBlizzardAccessToken() {
     const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
     //const clientId = process.env.VITE_CLIENT_ID;
     //const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
-    console.log('clientId = ', clientId)
-    console.log('clientSecret = ', clientId)
+    //console.log('clientId = ', clientId)
+    //console.log('clientSecret = ', clientId)
     const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const headers = {
       Authorization: `Basic ${authorization}`,
@@ -32,7 +32,7 @@ async function getBlizzardAccessToken() {
     const response = await axios.post('https://oauth.battle.net/token', data, { headers });
 
     if (response.status === 200) {
-      console.log('Access token:', response.data.access_token);
+      //console.log('Access token:', response.data.access_token);
       return response.data.access_token;
     } else {
       throw new Error(`Failed to retrieve access token: ${response.statusText}`);
@@ -64,6 +64,8 @@ interface AppState {
     "minion": BlizzardCard[],
     "hero": BlizzardCard[],
     "spell": BlizzardCard[],
+    "quest": BlizzardCard[],
+    "reward": BlizzardCard[],
     "other": BlizzardCard[]
   };
   curCardType: string;
@@ -113,7 +115,7 @@ function cardDisplay(card: BlizzardCard){
     let result = null;
     
     result =
-    <div key={card.id} style={{ width: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+    <div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
       <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
       
       <div style={{ textAlign: 'center' }}>
@@ -135,6 +137,8 @@ class App extends Component<object, AppState> {
       "minion": [],
       "hero": [],
       "spell": [],
+      "quest":[],
+      "reward": [],
       "other": [],
     },
     curCardType: "minion",
@@ -176,6 +180,11 @@ class App extends Component<object, AppState> {
       result = 'quest';
     } else if ("spellSchoolId" in cardData) {
       result = 'spell';
+    } else if (cardData.battlegrounds.reward == true) {
+      result = 'reward';
+     
+    }else{
+      result = 'minion';
     }
 
     return result;
@@ -197,21 +206,25 @@ class App extends Component<object, AppState> {
     console.log('tempCards = ', tempCards);
     
     let apiData = null;
-    const useLocalData = false;
+    let useLocalData = false;
+
+    useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
+    console.log('use mock Data = ', useLocalData);
     if (useLocalData){
-      
+      console.log('fetching local data')
       apiData = await this.getMockData();
-      console.log("local api data = ", apiData)
+      //console.log("local api data = ", apiData)
     
     }else{
       try{
+        console.log('fetching data from api')
         const accessToken = await getBlizzardAccessToken();
 
         const headers = {
           Authorization: `Bearer ${accessToken}`,
         };
         let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-        url += '&pageSize=100'
+        url += '&pageSize=1000'
         //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
   
         const response = await axios.get(url, { headers });
@@ -253,7 +266,8 @@ class App extends Component<object, AppState> {
           
         
       });
-      //const sortedMinions = minions.sort((a, b) => a.tier - b.tier);
+      tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier as number);
+      tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier as number);
       for (const type in tempCards) {
         console.log(`${type} size = ${tempCards[type].length}`)
       }
@@ -262,6 +276,8 @@ class App extends Component<object, AppState> {
           "minion": tempCards.minion,
           "hero": tempCards.hero,
           "spell": tempCards.spell,
+          "quest": tempCards.quest,
+          "reward": tempCards.reward,
           "other": tempCards.other,
         }
       });

@@ -13,7 +13,8 @@
     "axios": "^1.6.8",
     "buffer": "^6.0.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "tailwind": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
