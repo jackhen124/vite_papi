@@ -9,16 +9,17 @@ import { Buffer } from 'buffer';
 //import fs from 'fs';
 import { mockData } from '../mockData';
 
-const clientId = process.env.VITE_CLIENT_ID ?? '';
-const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
+
 
 
 
 async function getBlizzardAccessToken() {
   console.log('Fetching access token...')
   try {
-    
-
+    const clientId = process.env.VITE_CLIENT_ID ?? '';
+    const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
+    console.log('clientId = ', clientId)
+    console.log('clientSecret = ', clientSecret)
     const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const headers = {
       Authorization: `Basic ${authorization}`,
@@ -263,15 +264,13 @@ class App extends Component<object, AppState> {
         }
       });
       
-    } else {
-      throw new Error(`Failed to fetch cards: ${response.statusText}`);
-    }
+    } 
     
   }
   
 
   render() {
-    const curCardGroup = this.state.cards[this.state.curCardType];
+    const curCardGroup = this.state.cards[this.state.curCardType as keyof typeof this.state.cards];
     console.log('curCardGroup  size = ', curCardGroup.length);
     return (
       <>
