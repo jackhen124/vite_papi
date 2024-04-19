@@ -25,4 +25,4 @@ dist-ssr
 
 # I added
 .env
-src/mockData.tsx
+mockData.tsx

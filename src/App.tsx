@@ -1,13 +1,13 @@
-import { Component, useState } from 'react'
+import { Component} from 'react'
 
 import './App.css'
 
 import axios from 'axios';
 import { Buffer } from 'buffer';
-import { useEffect } from 'react';
-import { render } from 'react-dom';
-import fs from 'fs';
-import { mockData } from './mockData';
+//import { useEffect } from 'react';
+//import { render } from 'react-dom';
+//import fs from 'fs';
+import { mockData } from '../mockData';
 
 const clientId = process.env.VITE_CLIENT_ID ?? '';
 const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
