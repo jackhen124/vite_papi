@@ -49,7 +49,7 @@ interface BlizzardCard {
   // Define the expected structure of a Hearthstone card from the API
   id: number;
   name: string;
-  tier: string;
+  tier: number;
   image: string;
   text: string;
   tribeIds: number[];
@@ -139,7 +139,7 @@ class App extends Component<object, AppState> {
       "spell": [],
       "quest":[],
       "reward": [],
-      "other": [],
+      "other": []
     },
     curCardType: "minion",
   };
@@ -250,7 +250,7 @@ class App extends Component<object, AppState> {
         const newCard: BlizzardCard = {
           id: cardData.id,
           name: cardData.name,
-          tier: cardData.battlegrounds.tier,
+          tier: cardData.battlegrounds.tier ?? 0,
           image: cardData.battlegrounds.image,
           text: cardData.text,
           type: type,
@@ -266,21 +266,35 @@ class App extends Component<object, AppState> {
           
         
       });
-      tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
-      tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
+     
+      //tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
+      //tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
       for (const type in tempCards) {
         console.log(`${type} size = ${tempCards[type].length}`)
-      }
-      this.setState({
-        cards: {
-          "minion": tempCards.minion,
-          "hero": tempCards.hero,
-          "spell": tempCards.spell,
-          "quest": tempCards.quest,
-          "reward": tempCards.reward,
-          "other": tempCards.other,
+        if (tempCards[type].length === 0){
+          continue;
         }
-      });
+        const exampleCard = tempCards[type][0];
+        if (exampleCard.tier){
+          if (exampleCard.tier !== undefined) {
+         
+            console.log(`${type} has tier! sorting... `)
+            tempCards[type] = tempCards[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
+          }
+        }
+        
+      }
+      //this.setState({
+        //cards: {
+          //"minion": tempCards.minion,
+          //"hero": tempCards.hero,
+          //"spell": tempCards.spell,
+          //"quest": tempCards.quest,
+          //"reward": tempCards.reward,
+          //"other": tempCards.other,
+        //}
+      //});
+      this.setState({ cards: tempCards });
       
     } 
     
