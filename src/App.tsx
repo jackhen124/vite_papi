@@ -1,5 +1,5 @@
 import { Component} from 'react'
-
+import {motion, useMotionValue, useSpring, useTransform} from 'framer-motion'
 import './App.css'
 
 import axios from 'axios';
@@ -54,6 +54,7 @@ interface BlizzardCard {
   text: string;
   tribeIds: number[];
   type: string;
+  cardTypeId: number;
   // Add other relevant card properties based on the API response
 }
 
@@ -61,15 +62,36 @@ interface BlizzardCard {
 
 interface AppState {
   cards: {
-    "minion": BlizzardCard[],
-    "hero": BlizzardCard[],
-    "spell": BlizzardCard[],
-    "quest": BlizzardCard[],
-    "reward": BlizzardCard[],
-    "other": BlizzardCard[]
+    [key: number]: BlizzardCard[];
   };
-  curCardType: string;
+  curCardTypeId: number;
 }
+
+
+function cardTypeIdToWords(cardTypeId: number, isPlural: boolean = false) {  
+  //console.log("cardTypeIdToWords = ", cardTypeId)
+  let result = '';
+  const conversionDict: { [key: number]: string } = {
+     
+    4: 'Minion',
+    5: 'Quest',
+    40: 'Reward',
+    42: 'Spell',
+    
+    3: 'Hero',
+    
+  };
+
+  
+  result = conversionDict[cardTypeId] || 'Other';
+  if (isPlural){
+    result += 's';
+  }
+  return result;
+
+}
+
+
 
 function tribeIdsToWords(minionIds: number[]) {
   //console.log("minionTypeIdsToWords = ", minionIds)
@@ -79,9 +101,12 @@ function tribeIdsToWords(minionIds: number[]) {
     14: 'Murloc',
     15: 'Demon',
     17: 'Mech',
+    18: 'Elemental',
+    20: 'Beast',
     23: 'pirate',
     24: 'Dragon',
     43: 'Quilboar',
+    92: 'Naga'
   };
   if (minionIds) {
     minionIds.forEach((minionId) => {
@@ -100,50 +125,107 @@ function tribeIdsToWords(minionIds: number[]) {
 
 function cardGroupDisplay(cards: BlizzardCard[]) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around' }}>
-      {cards.map((card: BlizzardCard) => (
-        cardDisplay(card)
-      ))}
+    
+    <div>
+      {cards.length > 0 ? (
+        <ul>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around' }}>
+            {cards.map((card: BlizzardCard) => (
+              CardDisplay(card)
+            ))}
+          </div>
+        </ul>
+      ) : (
+        <p>Loading cards...</p>
+      )}
     </div>
+    
   )
 }
 
 
 
-function cardDisplay(card: BlizzardCard){
 
-    let result = null;
+
+function cardDisplayOld(card: BlizzardCard){
+
+  let result = null;
+  
+  result =
+  <div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+    <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
     
-    result =
-    <div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
-      <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
-      
-      <div style={{ textAlign: 'center' }}>
+    <div style={{ textAlign: 'center' }}>
         {card.name}
+    </div>
+    <div style={{ textAlign: 'center' }}>
+      {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
+    </div>
+    
+  </div>
+  
+  return result;
+
+}
+
+const CardDisplay = (card: BlizzardCard) => {
+ 
+  //const x = useMotionValue(0);
+  //const y = useMotionValue(0);
+  //const mouseXSpring = useSpring(x);
+  //const mouseYSpring = useSpring(y);
+
+  //const rotateX = useTransform(mouseYSpring, [-.5, .5], ["17.5deg", "-17.5deg"]);
+  //const rotateYSpring = useSpring(y)
+  const handleMouseMove = (event: any) => {
+    const rect =  event.target.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    const valFromTutorial = .5
+    const xPercent = mouseX / width - valFromTutorial;
+    const yPercent = mouseY / height - valFromTutorial;
+    console.log('w = ', mouseX, ' h = ', mouseY)
+    x.set(xPercent);
+    y.set(yPercent);
+  }
+  return(
+    <motion.div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+      <div 
+        style={{ position: 'relative',transformStyle: "preserve-3d",}}
+        //onMouseMove = {handleMouseMove}
+      >
+        <img src={card.image} alt={card.name} style={{ transformStyle: "preserve-3d", width: '100%', height: 'auto' }} />
+      </div>
+      <div style={{ textAlign: 'center' }}>
+          {card.name}
       </div>
       <div style={{ textAlign: 'center' }}>
         {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
       </div>
-    </div>
-    
-    return result;
+      
+    </motion.div>
+  );
   
+
+
 }
+
 
 class App extends Component<object, AppState> {
   
   state: AppState = {
+    
+    
+    curCardTypeId: 4,
     cards: {
-      "minion": [],
-      "hero": [],
-      "spell": [],
-      "quest":[],
-      "reward": [],
-      "other": []
+      4:[],
     },
-    curCardType: "minion",
   };
-
+  
   async getMockData(){
     const result = mockData;
     //console.log('Getting mock data ', result)
@@ -151,20 +233,20 @@ class App extends Component<object, AppState> {
     return result;
     
   }
-  cardTypeTab(type: string){
+  cardTypeTab(typeId: number){
 
     return (
       <button 
-        onClick={() => this.cardTypeTabClicked(type)}
+        onClick={() => this.cardTypeTabClicked(typeId)}
         style={{ margin: '10px', padding: '10px' }}
       >
-        {type}
+        {cardTypeIdToWords(typeId, true)}
       </button>
     );
   }
-  cardTypeTabClicked(type: string){
+  cardTypeTabClicked(type: number){
     
-    this.setState({ curCardType: type });
+    this.setState({ curCardTypeId: type });
   
   }
   componentDidMount() {
@@ -172,23 +254,6 @@ class App extends Component<object, AppState> {
     this.fetchData();
   }
 
-  getCardTypeFromData(cardData: any) {
-    let result = "minion";
-    if (cardData.battlegrounds.hero == true) {
-      result = 'hero';
-    } else if (cardData.battlegrounds.quest == true) {
-      result = 'quest';
-    } else if ("spellSchoolId" in cardData) {
-      result = 'spell';
-    } else if (cardData.battlegrounds.reward == true) {
-      result = 'reward';
-     
-    }else{
-      result = 'minion';
-    }
-
-    return result;
-  }
 
   async fetchData() {
     console.log('Fetching data...')
@@ -198,11 +263,8 @@ class App extends Component<object, AppState> {
     
     const tempCards: { [key: string]: BlizzardCard[] } = {};
 
-    Object.keys(this.state.cards).forEach((type) => {
+   
       
-      tempCards[type] = [];
-
-    });
     console.log('tempCards = ', tempCards);
     
     let apiData = null;
@@ -238,7 +300,8 @@ class App extends Component<object, AppState> {
       
       apiData.cards.forEach((cardData: any) => {
         
-        const type = this.getCardTypeFromData(cardData);
+        //const type = this.getCardTypeFromData(cardData);
+        
         let tribeIds = []
         
         tribeIds.push(cardData.minionTypeId)
@@ -246,27 +309,33 @@ class App extends Component<object, AppState> {
           console.log("ADDITIONAL  id = ", id)
           tribeIds.push(id)
         });
-        
+        let cardTypeId = cardData.cardTypeId;
+        if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
+          cardTypeId = 40;
+          console.log('cardTypeId = ', cardTypeId);
+        }
         const newCard: BlizzardCard = {
           id: cardData.id,
           name: cardData.name,
           tier: cardData.battlegrounds.tier ?? 0,
           image: cardData.battlegrounds.image,
           text: cardData.text,
-          type: type,
-          tribeIds: tribeIds
+          //type: type,
+          tribeIds: tribeIds,
+          cardTypeId: cardTypeId,
         };
-        
-        try{
-          tempCards[type].push(newCard);
-        }catch(error){
-          console.error('Error adding ',type,' card to tempCards:', tempCards);
+       
+
+        if (tempCards[newCard.cardTypeId] === undefined) {
+          tempCards[newCard.cardTypeId] = [];
         }
+      
+        tempCards[newCard.cardTypeId].push(newCard);
         
           
         
       });
-     
+      
       //tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
       //tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
       for (const type in tempCards) {
@@ -284,16 +353,7 @@ class App extends Component<object, AppState> {
         }
         
       }
-      //this.setState({
-        //cards: {
-          //"minion": tempCards.minion,
-          //"hero": tempCards.hero,
-          //"spell": tempCards.spell,
-          //"quest": tempCards.quest,
-          //"reward": tempCards.reward,
-          //"other": tempCards.other,
-        //}
-      //});
+     
       this.setState({ cards: tempCards });
       
     } 
@@ -302,20 +362,14 @@ class App extends Component<object, AppState> {
   
 
   render() {
-    const curCardGroup = this.state.cards[this.state.curCardType as keyof typeof this.state.cards];
+    
+    const curCardGroup = this.state.cards[this.state.curCardTypeId];
+    //console.log('curCardGroup = ', curCardGroup)
     console.log('curCardGroup  size = ', curCardGroup.length);
     return (
       <>
         {Object.keys(this.state.cards).map((cardType: string) => this.cardTypeTab(cardType))}
-        <div>
-          {curCardGroup.length > 0 ? (
-            <ul>
-              {cardGroupDisplay(curCardGroup)}
-            </ul>
-          ) : (
-            <p>Loading cards...</p>
-          )}
-        </div>
+        {cardGroupDisplay(curCardGroup)}
       </>
     );
   }
