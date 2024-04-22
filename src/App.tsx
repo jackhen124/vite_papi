@@ -4,7 +4,7 @@ import './App.css'
 
 import axios from 'axios';
 import { Buffer } from 'buffer';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 //import { render } from 'react-dom';
 //import fs from 'fs';
 import { mockData } from './mockData';
@@ -43,24 +43,6 @@ async function getBlizzardAccessToken() {
     throw error; // Re-throw for handling in the calling component
   }
 }
-
-
-
-interface BlizzardCard {
-  // Define the expected structure of a Hearthstone card from the API
-  id: number;
-  name: string;
-  tier: number;
-  image: string;
-  text: string;
-  tribeIds: number[];
-  type: string;
-  cardTypeId: number;
-  // Add other relevant card properties based on the API response
-}
-
-
-
 
 
 
@@ -217,23 +199,21 @@ const CardDisplay = (card: BlizzardCard) => {
 
 
 
-function cardTypeTabClicked(type: number){
-  
-  this.setState({ curCardTypeId: type });
+function cardTypeTabClicked(type: string){
+  console.log('cardTypeTabClicked = ', type)
+  //this.setState({ curCardTypeId: type });
 
 }
 
-function cardTypeTab(typeId: number){
+function cardTypeTab(type: string){
   let borderSize = '0px'
-  if (this.state.curCardTypeId == typeId){
-    borderSize = '4px'
-  }
+  
   return (
     <button 
-      onClick={() => this.cardTypeTabClicked(typeId)}
+      onClick={() => cardTypeTabClicked(type)}
       style={{ margin: '4px', padding: '10px', width: '100px', border: 'none', borderRadius: '4px'}}
     >
-      {cardTypeIdToWords(typeId, true)}
+      {cardTypeIdToWords(type, true)}
     </button>
   );
 }
@@ -246,32 +226,42 @@ async function getMockData(){
     
 }
 
-async function fetchData() {
+function typeIdToString(typeId: number){
+  let result = 'other';
+  const conversionDict: { [key: number]: string } = {
+    4: 'minion',
+    5: 'quest',
+    40: 'reward',
+    42: 'spell',
+    43: 'reward',
+    3: 'hero',
+  };
+  result = conversionDict[typeId] || 'Other';
+  return result;
+}
+
+const useFetchDataOld() => {
 
   
     
-  const cards = {}
+  //const cardsByType: { [key: string]: [] } = {};
+  const [state, setState] = useState({
+    loading:true,
+    data: null,
+    error: null
+
+  });
     
-  
   console.log('Fetching data...')
-  
-  
-  
-  
-  const tempCards: { [key: string]: BlizzardCard[] } = {};
-
- 
     
-  console.log('tempCards = ', tempCards);
-  
   let apiData = null;
   let useLocalData = false;
 
   useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
-  console.log('use mock Data = ', useLocalData);
+  console.log('use local Data = ', useLocalData);
   if (useLocalData){
     console.log('fetching local data')
-    apiData = await this.getMockData();
+    apiData = await getMockData();
     //console.log("local api data = ", apiData)
   
   }else{
@@ -302,7 +292,7 @@ async function fetchData() {
       let tribeIds = []
       
       tribeIds.push(cardData.minionTypeId)
-      cardData.multiClassIds.forEach((id: any) => {
+      cardData.multiClassIds.forEach((id) => {
         console.log("ADDITIONAL  id = ", id)
         tribeIds.push(id)
       });
@@ -311,7 +301,8 @@ async function fetchData() {
         cardTypeId = 40;
         console.log('cardTypeId = ', cardTypeId);
       }
-      const newCard: BlizzardCard = {
+      const typeKey = typeIdToString(cardData.cardTypeId);
+      const newCard = {
         id: cardData.id,
         name: cardData.name,
         tier: cardData.battlegrounds.tier ?? 0,
@@ -319,54 +310,228 @@ async function fetchData() {
         text: cardData.text,
         //type: type,
         tribeIds: tribeIds,
-        cardTypeId: cardTypeId,
+        cardType: typeKey,
       };
      
-
-      if (tempCards[newCard.cardTypeId] === undefined) {
-        tempCards[newCard.cardTypeId] = [];
+      
+      if (cardsByType[typeKey] === undefined) {
+        cardsByType[typeKey] = [];
       }
-    
-      tempCards[newCard.cardTypeId].push(newCard);
+      
+      cardsByType[typeKey].push(newCard);
       
         
       
     });
     
-    //tempCards.minion = tempCards.minion.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
-    //tempCards.spell = tempCards.spell.sort((a: BlizzardCard, b: BlizzardCard) => a.tier as number - b.tier as number);
-    for (const type in tempCards) {
-      console.log(`${type} size = ${tempCards[type].length}`)
-      if (tempCards[type].length === 0){
+    for (const type in cardsByType) {
+      console.log(`${type} count = ${cardsByType[type].length}`)
+      if (cardsByType[type].length === 0){
         continue;
       }
-      const exampleCard = tempCards[type][0];
+      const exampleCard = cardsByType[type][0];
       if (exampleCard.tier){
         if (exampleCard.tier !== undefined) {
        
           console.log(`${type} has tier! sorting... `)
-          tempCards[type] = tempCards[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
+          cardsByType[type] = cardsByType[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
         }
       }
       
     }
-   
-    this.setState({ cards: tempCards });
+    setState(prevState => ({
+      data: cardsByType
+    )
+    return cardsByType;
     
   } 
+}
+
+
+const useFetchData() => {
+
+  
+    
+  //const cardsByType: { [key: string]: [] } = {};
+  const [state, setState] = useState({
+    loading:true,
+    data: null,
+    error: null
+
+  });
+    
+  console.log('Fetching data...')
+    
+  let apiData = null;
+  let useLocalData = false;
+
+  useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
+  console.log('use local Data = ', useLocalData);
+  if (useLocalData){
+    console.log('fetching local data')
+    
+    apiData = await getMockData();
+    //console.log("local api data = ", apiData)
+  
+  }else{
+    try{
+      console.log('fetching data from api')
+      const accessToken = await getBlizzardAccessToken();
+
+      const headers = {
+        Authorization: `Bearer ${accessToken}`,
+      };
+      let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
+      url += '&pageSize=1000'
+      //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
+
+      const response = await axios.get(url, { headers });
+      apiData = response.data;
+    }catch(error){
+      console.error('Error fetching data from api:', error);
+    }
+    
+  }
+  
+    
+    
+  setState(prevState => ({
+    data: cardsByType
+  }));
+  return state;
+    
+  
+}
+
+const convertApiDataToCardsByType = (apiData: any) => {
+  const cardsByType: { [key: string]: [] } = {};
+  apiData.cards.forEach((cardData: any) => {
+      
+    //const type = this.getCardTypeFromData(cardData);
+    
+    let tribeIds = []
+    
+    tribeIds.push(cardData.minionTypeId)
+    cardData.multiClassIds.forEach((id) => {
+      console.log("ADDITIONAL  id = ", id)
+      tribeIds.push(id)
+    });
+    let cardTypeId = cardData.cardTypeId;
+    if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
+      cardTypeId = 40;
+      console.log('cardTypeId = ', cardTypeId);
+    }
+    const typeKey = typeIdToString(cardData.cardTypeId);
+    const newCard = {
+      id: cardData.id,
+      name: cardData.name,
+      tier: cardData.battlegrounds.tier ?? 0,
+      image: cardData.battlegrounds.image,
+      text: cardData.text,
+      //type: type,
+      tribeIds: tribeIds,
+      cardType: typeKey,
+    };
+   
+    
+    if (cardsByType[typeKey] === undefined) {
+      cardsByType[typeKey] = [];
+    }
+    
+    cardsByType[typeKey].push(newCard);
+    
+      
+    
+  });
+  
+  for (const type in cardsByType) {
+    console.log(`${type} count = ${cardsByType[type].length}`)
+    if (cardsByType[type].length === 0){
+      continue;
+    }
+    const exampleCard = cardsByType[type][0];
+    if (exampleCard.tier){
+      if (exampleCard.tier !== undefined) {
+     
+        console.log(`${type} has tier! sorting... `)
+        cardsByType[type] = cardsByType[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
+      }
+    }
+    
+  }
+  return cardsByType
+
+}
+
+const useFetchDataFromTutorial() => { 
+  const localRequestConfig = requestConfig || {};
+  const [state, setState] = useState({
+    loading: true,
+    data: null,
+    error: null,
+  });
+  if (!localRequestConfig?.method) {
+    localRequestConfig.method = 'GET';
+  }
+  useEffect(() => {
+    if (localRequestConfig.url) {
+      axios(localRequestConfig)
+        .then((res) => {
+          setState(prevState => ({
+            ...prevState,
+            data: res.data,
+          }))
+        })
+        .catch((err) => {
+          setState(prevState => ({
+            ...prevState,
+            error: err,
+          }))
+        })
+        .finally(() => {
+          setState(prevState => ({
+            ...prevState,
+            loading: false,
+          }))
+        });
+    } else {
+      setState(prevState => ({
+        ...prevState,
+        loading: false,
+        error: new Error('No URL provided!'),
+      }));
+    }
+    return state;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestConfig]);
+}
 
 function App() {
+  console.log('App')
+  const curCardType = 'minion'
+  //const [cardsByType, setCardsByType] = {curCardType:[]}
+  const {
+    data: cardsByType,
+    loading: cardsLoading,
+    error: cardsError,
+  } = useFetchData();
+  //const [count, setCount] = useState(0)
+  //const curCardGroup = this.state.cards[this.state.curCardTypeId];
   
-  const cards = await fetchData();
-  const [count, setCount] = useState(0)
-  const curCardGroup = this.state.cards[this.state.curCardTypeId];
+  //const curCardGroup = cardsByType[curCardType];
   //console.log('curCardGroup = ', curCardGroup)
-  console.log('curCardGroup  size = ', curCardGroup.length);
+  //console.log('curCardGroup  size = ', curCardGroup.length);
   return (
-    <>
-        {Object.keys(cards).map((cardTypeId: number) => this.cardTypeTab(cardTypeId))}
-        {cardGroupDisplay(curCardGroup)}
-    </>
+    <div className="App">
+      {cardsLoading ? (
+        <p>Data is currently loading...</p>
+      ) : cardsError ? (
+        <p>There was an issue loading the cards.</p>
+      ) : (
+        {cardsGroupDisplay(cardsByType[curCardType])}
+        
+      )}
+    </div>
   )
 }
 
