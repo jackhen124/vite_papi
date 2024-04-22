@@ -197,7 +197,7 @@ class App extends Component<object, AppState> {
     console.log('tempCards = ', tempCards);
     
     let apiData = null;
-    const useLocalData = false;
+    const useLocalData = true;
     if (useLocalData){
       
       apiData = await this.getMockData();
