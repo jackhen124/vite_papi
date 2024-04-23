@@ -2,14 +2,14 @@ import { Component} from 'react'
 import {motion, useMotionValue, useSpring, useTransform} from 'framer-motion'
 import './App.css'
 
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { Buffer } from 'buffer';
 import { useEffect, useState } from 'react';
 //import { render } from 'react-dom';
 //import fs from 'fs';
 import { mockData } from './mockData';
 import { setDefaultAutoSelectFamilyAttemptTimeout } from 'net';
-
+import { get } from 'http';
 
 
 
@@ -21,8 +21,8 @@ async function getBlizzardAccessToken() {
     const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
     //const clientId = process.env.VITE_CLIENT_ID;
     //const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
-    //console.log('clientId = ', clientId)
-    //console.log('clientSecret = ', clientId)
+    console.log('clientId = ', clientId)
+    console.log('clientSecret = ', clientId)
     const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const headers = {
       Authorization: `Basic ${authorization}`,
@@ -34,6 +34,7 @@ async function getBlizzardAccessToken() {
 
     if (response.status === 200) {
       //console.log('Access token:', response.data.access_token);
+      console.log("Get access token successful")
       return response.data.access_token;
     } else {
       throw new Error(`Failed to retrieve access token: ${response.statusText}`);
@@ -46,24 +47,13 @@ async function getBlizzardAccessToken() {
 
 
 
-function cardTypeIdToWords(cardTypeId: number, isPlural: boolean = false) {  
+function cardTypeAsWord(cardType: string, isPlural: boolean = false) {  
   //console.log("cardTypeIdToWords = ", cardTypeId)
-  let result = '';
-  const conversionDict: { [key: number]: string } = {
-     
-    4: 'Minion',
-    5: 'Quest',
-    40: 'Reward',
-    42: 'Spell',
-    
-    3: 'Hero',
-    
-  };
+  let result = cardType.charAt(0).toUpperCase() + cardType.slice(1);
 
   
-  result = conversionDict[cardTypeId] || 'Other';
-  if (isPlural){
-    if (result == 'Hero'){
+  if (isPlural) {
+    if (result === 'Hero') {
       result += 'e';
     }
     result += 's';
@@ -104,54 +94,27 @@ function tribeIdsToWords(minionIds: number[]) {
   return result
 }
 
-function cardGroupDisplay(cards: BlizzardCard[]) {
+function cardGroupDisplay(cards) {
+  if (cards === undefined) {  
+    return (
+      <p>Loading cards...</p>
+    );
+  }
   return (
     
-    <div>
-      {cards.length > 0 ? (
-        <ul>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around' }}>
-            {cards.map((card: BlizzardCard) => (
-              CardDisplay(card)
-            ))}
-          </div>
-        </ul>
-      ) : (
-        <p>Loading cards...</p>
-      )}
+    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around' }}>
+      {cards.map((card: BlizzardCard) => (
+        CardDisplay(card)
+      ))}
     </div>
     
   )
-}
-
-
-
-
-
-function CardDisplayOld(card: BlizzardCard){
-
-  let result = null;
   
-  result =
-  <div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
-    <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
-    
-    <div style={{ textAlign: 'center' }}>
-        {card.name}
-    </div>
-    <div style={{ textAlign: 'center' }}>
-      {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
-    </div>
-    
-  </div>
-  
-  return result;
-
 }
 
 const CardDisplay = (card: BlizzardCard) => {
 
-  const [count, setCount ] = useState(0);
+  //const [count, setCount ] = useState(0);
   //const x = useMotionValue(0);
   //const y = useMotionValue(0);
   //const mouseXSpring = useSpring(x);
@@ -170,9 +133,9 @@ const CardDisplay = (card: BlizzardCard) => {
     const valFromTutorial = .5
     const xPercent = mouseX / width - valFromTutorial;
     const yPercent = mouseY / height - valFromTutorial;
-    console.log('w = ', mouseX, ' h = ', mouseY)
-    x.set(xPercent);
-    y.set(yPercent);
+    //console.log('w = ', mouseX, ' h = ', mouseY)
+    //x.set(xPercent);
+    //y.set(yPercent);
   }
   return(
     <motion.div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
@@ -188,9 +151,7 @@ const CardDisplay = (card: BlizzardCard) => {
       <div style={{ textAlign: 'center' }}>
         {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
       </div>
-      <div style={{ textAlign: 'center' }}>
-        {count}
-      </div>
+      
       
     </motion.div>
   );
@@ -205,22 +166,48 @@ function cardTypeTabClicked(type: string){
 
 }
 
-function cardTypeTab(type: string){
-  let borderSize = '0px'
+function cardTypeTab(type: string, isSelected: boolean = false){
+  let borderSize = '2.5px'
+  let offset = '0px';
+  let tabClass = "tab";
+  let color = 'white'; // default color
+  let textColor = ''
   
+  let b = `${borderSize} solid ${color}`;
+  let style = { 
+    margin: '4px', 
+    padding: '10px', 
+    width: '125px', 
+    border: 'none', 
+    position: 'relative', 
+    color: 'white',
+    backgroundColor: 'rgba(1,1,1,1)',
+    borderBottom: b,
+  }
+  if (isSelected){
+    
+    style.borderBottom = 'none';
+    style.borderTop = b
+    style.borderRight = b;
+    style.borderLeft = b;
+    style.backgroundColor = 'rgba(1,1,1,0)';
+    
+    
+  }
   return (
     <button 
       onClick={() => cardTypeTabClicked(type)}
-      style={{ margin: '4px', padding: '10px', width: '100px', border: 'none', borderRadius: '4px'}}
+      className = "tab"
+      style={style}
     >
-      {cardTypeIdToWords(type, true)}
+      {cardTypeAsWord(type, true)}
     </button>
   );
 }
 
 async function getMockData(){
     const result = mockData;
-    //console.log('Getting mock data ', result)
+    console.log('Getting mock data ', result)
     
     return result;
     
@@ -240,48 +227,47 @@ function typeIdToString(typeId: number){
   return result;
 }
 
-const useFetchDataOld() => {
+async function fetchData() {
 
   
     
-  //const cardsByType: { [key: string]: [] } = {};
-  const [state, setState] = useState({
-    loading:true,
-    data: null,
-    error: null
-
-  });
-    
+  const cardsByType: { [key: string]: [] } = {};
+  
   console.log('Fetching data...')
     
   let apiData = null;
   let useLocalData = false;
 
   useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
+  useLocalData = false;
   console.log('use local Data = ', useLocalData);
-  if (useLocalData){
-    console.log('fetching local data')
-    apiData = await getMockData();
-    //console.log("local api data = ", apiData)
   
-  }else{
+  if (!useLocalData){
+    console.log('fetching data from api')
     try{
-      console.log('fetching data from api')
+      
       const accessToken = await getBlizzardAccessToken();
 
       const headers = {
         Authorization: `Bearer ${accessToken}`,
       };
       let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-      url += '&pageSize=1000'
+      //url += '&pageSize=1000'
       //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
 
       const response = await axios.get(url, { headers });
       apiData = response.data;
     }catch(error){
       console.error('Error fetching data from api:', error);
+      useLocalData = true;
     }
-    
+
+  }
+  if (useLocalData){
+    console.log('fetching local data')
+    apiData = await getMockData();
+    //console.log("local api data = ", apiData)
+  
   }
   if (apiData) {
     
@@ -293,13 +279,13 @@ const useFetchDataOld() => {
       
       tribeIds.push(cardData.minionTypeId)
       cardData.multiClassIds.forEach((id) => {
-        console.log("ADDITIONAL  id = ", id)
+        //console.log("ADDITIONAL  id = ", id)
         tribeIds.push(id)
       });
       let cardTypeId = cardData.cardTypeId;
       if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
         cardTypeId = 40;
-        console.log('cardTypeId = ', cardTypeId);
+        //console.log('cardTypeId = ', cardTypeId);
       }
       const typeKey = typeIdToString(cardData.cardTypeId);
       const newCard = {
@@ -339,200 +325,61 @@ const useFetchDataOld() => {
       }
       
     }
-    setState(prevState => ({
-      data: cardsByType
-    )
+    
     return cardsByType;
     
   } 
 }
 
 
-const useFetchData() => {
-
-  
-    
-  //const cardsByType: { [key: string]: [] } = {};
-  const [state, setState] = useState({
-    loading:true,
-    data: null,
-    error: null
-
-  });
-    
-  console.log('Fetching data...')
-    
-  let apiData = null;
-  let useLocalData = false;
-
-  useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
-  console.log('use local Data = ', useLocalData);
-  if (useLocalData){
-    console.log('fetching local data')
-    
-    apiData = await getMockData();
-    //console.log("local api data = ", apiData)
-  
-  }else{
-    try{
-      console.log('fetching data from api')
-      const accessToken = await getBlizzardAccessToken();
-
-      const headers = {
-        Authorization: `Bearer ${accessToken}`,
-      };
-      let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-      url += '&pageSize=1000'
-      //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
-
-      const response = await axios.get(url, { headers });
-      apiData = response.data;
-    }catch(error){
-      console.error('Error fetching data from api:', error);
-    }
-    
-  }
-  
-    
-    
-  setState(prevState => ({
-    data: cardsByType
-  }));
-  return state;
-    
-  
+interface BlizzardCard {
+  id: string;
+  name: string;
+  tier: number;
+  image: string;
+  text: string;
+  tribeIds: number[];
+  cardType: string;
 }
 
-const convertApiDataToCardsByType = (apiData: any) => {
-  const cardsByType: { [key: string]: [] } = {};
-  apiData.cards.forEach((cardData: any) => {
-      
-    //const type = this.getCardTypeFromData(cardData);
-    
-    let tribeIds = []
-    
-    tribeIds.push(cardData.minionTypeId)
-    cardData.multiClassIds.forEach((id) => {
-      console.log("ADDITIONAL  id = ", id)
-      tribeIds.push(id)
-    });
-    let cardTypeId = cardData.cardTypeId;
-    if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
-      cardTypeId = 40;
-      console.log('cardTypeId = ', cardTypeId);
-    }
-    const typeKey = typeIdToString(cardData.cardTypeId);
-    const newCard = {
-      id: cardData.id,
-      name: cardData.name,
-      tier: cardData.battlegrounds.tier ?? 0,
-      image: cardData.battlegrounds.image,
-      text: cardData.text,
-      //type: type,
-      tribeIds: tribeIds,
-      cardType: typeKey,
-    };
-   
-    
-    if (cardsByType[typeKey] === undefined) {
-      cardsByType[typeKey] = [];
-    }
-    
-    cardsByType[typeKey].push(newCard);
-    
-      
-    
-  });
-  
-  for (const type in cardsByType) {
-    console.log(`${type} count = ${cardsByType[type].length}`)
-    if (cardsByType[type].length === 0){
-      continue;
-    }
-    const exampleCard = cardsByType[type][0];
-    if (exampleCard.tier){
-      if (exampleCard.tier !== undefined) {
-     
-        console.log(`${type} has tier! sorting... `)
-        cardsByType[type] = cardsByType[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
-      }
-    }
-    
-  }
-  return cardsByType
 
-}
 
-const useFetchDataFromTutorial() => { 
-  const localRequestConfig = requestConfig || {};
-  const [state, setState] = useState({
-    loading: true,
-    data: null,
-    error: null,
-  });
-  if (!localRequestConfig?.method) {
-    localRequestConfig.method = 'GET';
-  }
-  useEffect(() => {
-    if (localRequestConfig.url) {
-      axios(localRequestConfig)
-        .then((res) => {
-          setState(prevState => ({
-            ...prevState,
-            data: res.data,
-          }))
-        })
-        .catch((err) => {
-          setState(prevState => ({
-            ...prevState,
-            error: err,
-          }))
-        })
-        .finally(() => {
-          setState(prevState => ({
-            ...prevState,
-            loading: false,
-          }))
-        });
-    } else {
-      setState(prevState => ({
-        ...prevState,
-        loading: false,
-        error: new Error('No URL provided!'),
-      }));
-    }
-    return state;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestConfig]);
-}
+ 
+
+
+
+
 
 function App() {
-  console.log('App')
-  const curCardType = 'minion'
-  //const [cardsByType, setCardsByType] = {curCardType:[]}
-  const {
-    data: cardsByType,
-    loading: cardsLoading,
-    error: cardsError,
-  } = useFetchData();
-  //const [count, setCount] = useState(0)
-  //const curCardGroup = this.state.cards[this.state.curCardTypeId];
+  //const [apiData, setApiData] = useState({'cardCount':0, 'cards': []});
+  const [cardData, setCardData] = useState({});
+  const [curCardType, setCurCardType] = useState('minion');
+  //useEffect(() => {
+    //fetchDataTest().then((res) => {
+      //setApiData(res);
+    //});
+  //}, []);
+  useEffect(() => {
+    fetchData().then((res) => {
+      setCardData(res);
+    });
+  }, []);
   
-  //const curCardGroup = cardsByType[curCardType];
-  //console.log('curCardGroup = ', curCardGroup)
-  //console.log('curCardGroup  size = ', curCardGroup.length);
   return (
-    <div className="App">
-      {cardsLoading ? (
-        <p>Data is currently loading...</p>
-      ) : cardsError ? (
-        <p>There was an issue loading the cards.</p>
-      ) : (
-        {cardsGroupDisplay(cardsByType[curCardType])}
-        
-      )}
+    <div className="App" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+     
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', width: '50%' }}>
+        {Object.keys(cardData).map((key) => (
+          <div key={key} onClick={() => setCurCardType(key)}>
+            {cardTypeTab(key, key === curCardType)}
+          </div>
+        ))}
+      </div>
+      <div>
+        {cardGroupDisplay(cardData[curCardType])}
+      </div>
     </div>
-  )
+  );
 }
 
 
