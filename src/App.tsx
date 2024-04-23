@@ -227,7 +227,7 @@ function typeIdToString(typeId: number){
   return result;
 }
 
-async function fetchData() {
+async function fetchDataOld() {
 
   
     
@@ -244,24 +244,31 @@ async function fetchData() {
   
   if (!useLocalData){
     console.log('fetching data from api')
-    try{
+    
       
-      const accessToken = await getBlizzardAccessToken();
+    const accessToken = await getBlizzardAccessToken();
+    
+    console.log('accessToken = ', accessToken)
+    const headers = {
+      Authorization: `Bearer ${accessToken}`,
+    };
+    let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
+    //url += '&pageSize=1000'
+    //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
 
-      const headers = {
-        Authorization: `Bearer ${accessToken}`,
-      };
-      let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-      //url += '&pageSize=1000'
-      //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
-
-      const response = await axios.get(url, { headers });
-      apiData = response.data;
+   
+    try{
+      //const response = await axios.get(url, { headers });
+      
+      //console.log('API request status:', response.status);
+      apiData = await getDataFromApi(accessToken);
+      console.log('apiData = ', apiData)
     }catch(error){
-      console.error('Error fetching data from api:', error);
-      useLocalData = true;
+      console.error('API GET CARDS error = ', error)
     }
-
+    
+    
+    
   }
   if (useLocalData){
     console.log('fetching local data')
@@ -270,65 +277,78 @@ async function fetchData() {
   
   }
   if (apiData) {
+    return filterApiData(apiData);
     
-    apiData.cards.forEach((cardData: any) => {
-      
-      //const type = this.getCardTypeFromData(cardData);
-      
-      let tribeIds = []
-      
-      tribeIds.push(cardData.minionTypeId)
-      cardData.multiClassIds.forEach((id) => {
-        //console.log("ADDITIONAL  id = ", id)
-        tribeIds.push(id)
-      });
-      let cardTypeId = cardData.cardTypeId;
-      if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
-        cardTypeId = 40;
-        //console.log('cardTypeId = ', cardTypeId);
-      }
-      const typeKey = typeIdToString(cardData.cardTypeId);
-      const newCard = {
-        id: cardData.id,
-        name: cardData.name,
-        tier: cardData.battlegrounds.tier ?? 0,
-        image: cardData.battlegrounds.image,
-        text: cardData.text,
-        //type: type,
-        tribeIds: tribeIds,
-        cardType: typeKey,
-      };
-     
-      
-      if (cardsByType[typeKey] === undefined) {
-        cardsByType[typeKey] = [];
-      }
-      
-      cardsByType[typeKey].push(newCard);
-      
-        
-      
-    });
-    
-    for (const type in cardsByType) {
-      console.log(`${type} count = ${cardsByType[type].length}`)
-      if (cardsByType[type].length === 0){
-        continue;
-      }
-      const exampleCard = cardsByType[type][0];
-      if (exampleCard.tier){
-        if (exampleCard.tier !== undefined) {
-       
-          console.log(`${type} has tier! sorting... `)
-          cardsByType[type] = cardsByType[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
-        }
-      }
-      
-    }
-    
-    return cardsByType;
     
   } 
+}
+
+
+
+function filterApiData(apiData){
+  console.log('filtering data...')
+  if (!apiData || !apiData.cards) {
+    console.error('No cards found in API data');
+    return {};
+  }
+  const cardsByType: { [key: string]: [] } = {};
+  
+  apiData.cards.forEach((cardData: any) => {
+      
+    //const type = this.getCardTypeFromData(cardData);
+    
+    let tribeIds = []
+    
+    tribeIds.push(cardData.minionTypeId)
+    cardData.multiClassIds.forEach((id) => {
+      //console.log("ADDITIONAL  id = ", id)
+      tribeIds.push(id)
+    });
+    let cardTypeId = cardData.cardTypeId;
+    if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
+      cardTypeId = 40;
+      //console.log('cardTypeId = ', cardTypeId);
+    }
+    const typeKey = typeIdToString(cardData.cardTypeId);
+    const newCard = {
+      id: cardData.id,
+      name: cardData.name,
+      tier: cardData.battlegrounds.tier ?? 0,
+      image: cardData.battlegrounds.image,
+      text: cardData.text,
+      //type: type,
+      tribeIds: tribeIds,
+      cardType: typeKey,
+    };
+   
+    
+    if (cardsByType[typeKey] === undefined) {
+      cardsByType[typeKey] = [];
+    }
+    
+    cardsByType[typeKey].push(newCard);
+    
+      
+    
+  });
+  
+  for (const type in cardsByType) {
+    console.log(`${type} count = ${cardsByType[type].length}`)
+    if (cardsByType[type].length === 0){
+      continue;
+    }
+    const exampleCard = cardsByType[type][0];
+    if (exampleCard.tier){
+      if (exampleCard.tier !== undefined) {
+     
+        console.log(`${type} has tier! sorting... `)
+        cardsByType[type] = cardsByType[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
+      }
+    }
+    
+  }
+  console.log('done filtering data')
+  return cardsByType;
 }
 
 
@@ -344,29 +364,92 @@ interface BlizzardCard {
 
 
 
- 
 
 
+async function fetchData(){
+  const accessToken = await getBlizzardAccessToken();
+  const cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds&pageSize=1000';
+  let useLocalData = false;
+
+  useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
+  useLocalData = false;
+  let apiData = {};
+  if (useLocalData){
+    apiData = await getMockData();
+  }else{
+    apiData = await getDataFromApi(cardsUrl, accessToken);
+  }
+  
+  const cardData = filterApiData(apiData);
+  return cardData;
+}
+
+async function getDataFromApi(url:string, access_token: string = ''){
+
+  console.log('getting data from url: ', url)
+  console.log('access_token = ', access_token)
+  const config = {
+    method: 'get',
+    maxBodyLength: Infinity,
+    url: url,
+    headers: { 
+     
+      'Authorization': `Bearer ${access_token}`
+    }
+  };
+  
+  axios.request(config)
+  //axios.get(url, { headers: { 'Authorization': `Bearer ${access_token}` } })
+  .then((response) => {
+    console.log('attempting to print response')
+    console.log(JSON.stringify(response));
+    return response.data;
+    
+  })
+  .catch(error => {
+    console.log('Error Response = ' , error.response)
+    if (error.response) {
+      // The server responded with a status code outside the 2xx range
+      console.log('Error response:', error.response);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.log('Error request:', error.request);
+    } else {
+      // Something happened in setting up the request that triggered an error
+      console.log('Error message:', error.message);
+    }
+    return null;
+  });
+}
+
+
+
+
+function testCatFactApi(){
+ getDataFromApi('https://catfact.ninja/fact')
+
+}
 
 
 
 function App() {
-  //const [apiData, setApiData] = useState({'cardCount':0, 'cards': []});
+  
+  console.log('App')
+  //testCatFactApi()
   const [cardData, setCardData] = useState({});
   const [curCardType, setCurCardType] = useState('minion');
+  fetchData()
   //useEffect(() => {
-    //fetchDataTest().then((res) => {
-      //setApiData(res);
-    //});
+  //  fetchData().then((res) => {
+  //    console.log('fetchData res = ', res)
+  //    setCardData(res);
+  //  });
   //}, []);
-  useEffect(() => {
-    fetchData().then((res) => {
-      setCardData(res);
-    });
-  }, []);
   
+  console.log('cardData = ', cardData)
   return (
     <div className="App" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      
      
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', width: '50%' }}>
         {Object.keys(cardData).map((key) => (
