@@ -10,39 +10,46 @@ import { useEffect, useState } from 'react';
 import { mockData } from './mockData';
 import { setDefaultAutoSelectFamilyAttemptTimeout } from 'net';
 import { get } from 'http';
+import { resolve } from 'path';
 
 
 
 
-async function getBlizzardAccessToken() {
-  console.log('Fetching access token...')
-  try {
-    const clientId = import.meta.env.VITE_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
-    //const clientId = process.env.VITE_CLIENT_ID;
-    //const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
-    console.log('clientId = ', clientId)
-    console.log('clientSecret = ', clientId)
-    const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const headers = {
-      Authorization: `Basic ${authorization}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-    const data = 'grant_type=client_credentials';
 
-    const response = await axios.post('https://oauth.battle.net/token', data, { headers });
 
-    if (response.status === 200) {
-      //console.log('Access token:', response.data.access_token);
-      console.log("Get access token successful")
-      return response.data.access_token;
-    } else {
-      throw new Error(`Failed to retrieve access token: ${response.statusText}`);
+const getBlizzardAccessToken = (): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    console.log('Fetching access token...')
+    try {
+      const clientId = import.meta.env.VITE_CLIENT_ID;
+      const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
+      //console.log('clientId = ', clientId)
+      //console.log('clientSecret = ', clientId)
+      const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      const headers = {
+        Authorization: `Basic ${authorization}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+      const data = 'grant_type=client_credentials';
+
+      axios.post('https://oauth.battle.net/token', data, { headers })
+        .then(response => {
+          if (response.status === 200) {
+            console.log("Get access token successful")
+            resolve(response.data.access_token);
+          } else {
+            reject(new Error(`Failed to retrieve access token: ${response.statusText}`));
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching access token:', error);
+          reject(error);
+        });
+    } catch (error) {
+      console.error('Error fetching access token:', error);
+      reject(error);
     }
-  } catch (error) {
-    console.error('Error fetching access token:', error);
-    throw error; // Re-throw for handling in the calling component
-  }
+  });
 }
 
 
@@ -160,11 +167,6 @@ const CardDisplay = (card: BlizzardCard) => {
 
 
 
-function cardTypeTabClicked(type: string){
-  console.log('cardTypeTabClicked = ', type)
-  //this.setState({ curCardTypeId: type });
-
-}
 
 function cardTypeTab(type: string, isSelected: boolean = false){
   let borderSize = '2.5px'
@@ -178,7 +180,7 @@ function cardTypeTab(type: string, isSelected: boolean = false){
     margin: '4px', 
     padding: '10px', 
     width: '125px', 
-    border: 'none', 
+    
     position: 'relative', 
     color: 'white',
     backgroundColor: 'rgba(1,1,1,1)',
@@ -196,7 +198,7 @@ function cardTypeTab(type: string, isSelected: boolean = false){
   }
   return (
     <button 
-      onClick={() => cardTypeTabClicked(type)}
+      
       className = "tab"
       style={style}
     >
@@ -205,12 +207,16 @@ function cardTypeTab(type: string, isSelected: boolean = false){
   );
 }
 
-async function getMockData(){
-    const result = mockData;
-    console.log('Getting mock data ', result)
-    
-    return result;
-    
+const getMockData = () => {
+  return new Promise((resolve, reject) => {
+    console.log('starting delay...')
+    setTimeout(() => {
+      // Start the timer
+      const result = mockData;
+      console.log('Getting mock data ', result)
+      resolve(result);
+    }, 1000);
+  });
 }
 
 function typeIdToString(typeId: number){
@@ -285,7 +291,7 @@ async function fetchDataOld() {
 
 
 
-function filterApiData(apiData){
+const filterApiData = (apiData) =>{
   console.log('filtering data...')
   if (!apiData || !apiData.cards) {
     console.error('No cards found in API data');
@@ -366,87 +372,89 @@ interface BlizzardCard {
 
 
 
-async function fetchData(){
-  const accessToken = await getBlizzardAccessToken();
-  const cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds&pageSize=1000';
+const fetchData = async () =>{
+  
+  let cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds'
+  cardsUrl += '&pageSize=1000';
   let useLocalData = false;
-
+  
   useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
   useLocalData = false;
   let apiData = {};
   if (useLocalData){
     apiData = await getMockData();
   }else{
+    const accessToken = await getBlizzardAccessToken();
+    
+    
     apiData = await getDataFromApi(cardsUrl, accessToken);
+    console.log(apiData)
   }
   
   const cardData = filterApiData(apiData);
   return cardData;
 }
 
-async function getDataFromApi(url:string, access_token: string = ''){
-
-  console.log('getting data from url: ', url)
-  console.log('access_token = ', access_token)
-  const config = {
-    method: 'get',
-    maxBodyLength: Infinity,
-    url: url,
-    headers: { 
-     
-      'Authorization': `Bearer ${access_token}`
-    }
-  };
-  
-  axios.request(config)
-  //axios.get(url, { headers: { 'Authorization': `Bearer ${access_token}` } })
-  .then((response) => {
-    console.log('attempting to print response')
-    console.log(JSON.stringify(response));
-    return response.data;
+const getDataFromApi = async (url:string, access_token: string = '') => {
+  return new Promise((resolve) => {
+    console.log('getting data from url: ', url)
+    //console.log('access_token = ', access_token)
+    const config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: url,
+      headers: { 
+      
+        'Authorization': `Bearer ${access_token}`
+      }
+    };
     
-  })
-  .catch(error => {
-    console.log('Error Response = ' , error.response)
-    if (error.response) {
-      // The server responded with a status code outside the 2xx range
-      console.log('Error response:', error.response);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.log('Error request:', error.request);
-    } else {
-      // Something happened in setting up the request that triggered an error
-      console.log('Error message:', error.message);
-    }
-    return null;
+    axios.request(config)
+    //axios.get(url, { headers: { 'Authorization': `Bearer ${access_token}` } })
+    .then((response) => {
+      console.log('attempting to print response')
+      console.log(JSON.stringify(response));
+      resolve(response.data);//.data;
+      
+    })
+    .catch(error => {
+      console.log('Error Response = ' , error.response)
+      if (error.response) {
+        // The server responded with a status code outside the 2xx range
+        console.log('Error response:', error.response);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.log('Error request:', error.request);
+      } else {
+        // Something happened in setting up the request that triggered an error
+        console.log('Error message:', error.message);
+      }
+      resolve({})
+    });
   });
-}
-
-
-
-
-function testCatFactApi(){
- getDataFromApi('https://catfact.ninja/fact')
-
 }
 
 
 
 function App() {
   
-  console.log('App')
-  //testCatFactApi()
-  const [cardData, setCardData] = useState({});
-  const [curCardType, setCurCardType] = useState('minion');
-  fetchData()
-  //useEffect(() => {
-  //  fetchData().then((res) => {
-  //    console.log('fetchData res = ', res)
-  //    setCardData(res);
-  //  });
-  //}, []);
   
-  console.log('cardData = ', cardData)
+  console.log('App')
+  
+  
+  const [cardData, setCardData] = useState({});
+ 
+  const [curCardType, setCurCardType] = useState('minion');
+ 
+  useEffect(() => {
+    fetchData().then((res) => {
+      console.log('fetchData res = ', res)
+      setCardData(res);
+    });
+  }, []);
+  
+  
+
   return (
     <div className="App" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
       
