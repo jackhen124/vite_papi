@@ -40,3 +40,31 @@
 .read-the-docs {
   color: #888;
 }
+
+.tab {
+  color: #ebebeb;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  
+  padding: 15px;
+  background-color: #060606;
+  transition: background-color 0.1s ease;
+}
+
+.tab:hover {
+  
+  border-color: #ffbd2f; /* Darker color on hover */
+ 
+}
+
+.tab:focus {
+  outline:none;
+  
+}
+
+
+
+
+

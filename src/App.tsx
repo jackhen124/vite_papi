@@ -1,73 +1,82 @@
-import { Component} from 'react'
 
 import './App.css'
 
-import axios from 'axios';
+
 import { Buffer } from 'buffer';
-//import { useEffect } from 'react';
-//import { render } from 'react-dom';
-//import fs from 'fs';
+import { useEffect, useState } from 'react';
+
 import { mockData } from './mockData';
 
+import axios from 'axios';
+import { Tilt } from "react-tilt";
 
 
 
 
-async function getBlizzardAccessToken() {
-  console.log('Fetching access token...')
-  try {
-    const clientId = import.meta.env.VITE_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
-    //const clientId = process.env.VITE_CLIENT_ID;
-    //const clientSecret = process.env.VITE_CLIENT_SECRET ?? '';
-    console.log('clientId = ', clientId)
-    console.log('clientSecret = ', clientSecret)
-    const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const headers = {
-      Authorization: `Basic ${authorization}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-    const data = 'grant_type=client_credentials';
 
-    const response = await axios.post('https://oauth.battle.net/token', data, { headers });
+const getBlizzardAccessToken = (): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    console.log('Fetching access token...')
+    try {
+      const clientId = import.meta.env.VITE_CLIENT_ID;
+      const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
+      //console.log('clientId = ', clientId)
+      //console.log('clientSecret = ', clientId)
+      const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      const headers = {
+        Authorization: `Basic ${authorization}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+      //console.log('auth: ', headers.Authorization)
+      const data = 'grant_type=client_credentials';
 
-    if (response.status === 200) {
-      console.log('Access token:', response.data.access_token);
-      return response.data.access_token;
-    } else {
-      throw new Error(`Failed to retrieve access token: ${response.statusText}`);
+      axios.post('https://oauth.battle.net/token', data, { headers })
+      //axios.post('https://us.battle.net/oauth/token?grant_type=client_credentials&client_id=421d99830f0447cc888e5a2889dd3bc1&client_secret=G2MukytybhQmFP50M4FOY3fZ8MQbCpf6')
+        .then(response => {
+          if (response.status === 200) {
+            console.log("Get access token successful")
+            //console.log("access token: " , response.data.access_token)
+            resolve(response.data.access_token);
+          } else {
+            reject(new Error(`Failed to retrieve access token: ${response.statusText}`));
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching access token:', error);
+          reject(error);
+        });
+    } catch (error) {
+      console.error('Error fetching access token:', error);
+      reject(error);
     }
-  } catch (error) {
-    console.error('Error fetching access token:', error);
-    throw error; // Re-throw for handling in the calling component
+  });
+}
+
+
+
+function cardTypeAsWord(cardType: string, isPlural: boolean = false) {  
+  //console.log("cardTypeIdToWords = ", cardTypeId)
+  let result = cardType
+  
+
+  
+  if (isPlural) {
+    if (cardType === 'hero') {
+      result += 'e';
+    }
+    if (cardType != 'other'){
+      result += 's';
+    }
+     
   }
+  
+  result = result.charAt(0).toUpperCase() + result.slice(1);
+  
+  return result;
+
 }
 
 
-
-interface BlizzardCard {
-  // Define the expected structure of a Hearthstone card from the API
-  id: number;
-  name: string;
-  tier: string;
-  image: string;
-  text: string;
-  tribeIds: number[];
-  type: string;
-  // Add other relevant card properties based on the API response
-}
-
-
-
-interface AppState {
-  cards: {
-    "minion": BlizzardCard[],
-    "hero": BlizzardCard[],
-    "spell": BlizzardCard[],
-    "other": BlizzardCard[]
-  };
-  curCardType: string;
-}
 
 function tribeIdsToWords(minionIds: number[]) {
   //console.log("minionTypeIdsToWords = ", minionIds)
@@ -77,9 +86,12 @@ function tribeIdsToWords(minionIds: number[]) {
     14: 'Murloc',
     15: 'Demon',
     17: 'Mech',
-    23: 'pirate',
+    18: 'Elemental',
+    20: 'Beast',
+    23: 'Pirate',
     24: 'Dragon',
     43: 'Quilboar',
+    92: 'Naga'
   };
   if (minionIds) {
     minionIds.forEach((minionId) => {
@@ -96,199 +108,368 @@ function tribeIdsToWords(minionIds: number[]) {
   return result
 }
 
-function cardGroupDisplay(cards: BlizzardCard[]) {
+function cardGroupDisplay(cards: BlizzardCard[] | undefined) {
+  if (cards === undefined) {  
+    return (
+      <p>Loading cards....</p>
+    );
+  }
   return (
+    
     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around' }}>
       {cards.map((card: BlizzardCard) => (
-        cardDisplay(card)
+        CardDisplay(card)
       ))}
+     
     </div>
+    
   )
+  
+}
+
+const CardDisplay = (card: BlizzardCard) => {
+  const tiltOptions = {
+  
+   
+    reverse:        false,  // reverse the tilt direction
+    max:            35,     // max tilt rotation (degrees)
+    perspective:    1000,   // Transform perspective, the lower the more extreme the tilt gets.
+    scale:          1.2,    // 2 = 200%, 1.5 = 150%, etc..
+    speed:          1000,   // Speed of the enter/exit transition
+    transition:     true,   // Set a transition on enter/exit.
+    axis:           null,   // What axis should be disabled. Can be X or Y.
+    reset:          true,    // If the tilt effect has to be reset on exit.
+    easing:         "cubic-bezier(.03,.98,.52,.99)",    // Easing on enter/exit.
+  }
+  
+  
+  return (
+    
+
+    <div 
+      
+      key={card.id}
+      style={{
+         
+        
+
+        width: '180px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        margin: '10px' 
+      }}>
+      <Tilt 
+        options={tiltOptions}
+        style={{ transform: "translateZ(105px)"}}
+        
+      >
+        <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
+        
+      </Tilt>
+      <div style={{  textAlign: 'center' }}>
+          <div>
+            {card.name}
+          </div>
+          <div>
+            {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
+          </div>
+          
+      </div>
+    
+      
+      
+      <script type="text/javascript" src="vanilla-tilt.js"></script>
+    </div>
+    
+  );
+  
+  
 }
 
 
 
-function cardDisplay(card: BlizzardCard){
-
-    let result = null;
+function cardTypeTab(type: string, isSelected: boolean = false){
+  const borderSize = '2.5px'
+  
+  
+  
+  
+  
+  const b = `${borderSize} solid`;
+  const style = { 
+    margin: '4px', 
+    padding: '10px', 
+    width: '125px', 
+    height: '70%',
     
-    result =
-    <div key={card.id} style={{ width: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
-      <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
+    color: 'lightgray',
+    backgroundColor: 'rgba(1,1,1,1)',
+    borderBottom: b,
+    borderTop:'none',
+    borderRight:'none',
+    borderLeft : 'none',
+    fontSize : '1.4em',
+  }
+  if (isSelected){
+    style.color = 'white';
+    style.borderBottom = 'none';
+    style.borderTop = b;
+    style.borderRight = b;
+    style.borderLeft = b;
+    style.backgroundColor = 'rgba(1,1,1,0)';
+    
+    
+  }
+  return (
+    <button 
       
-      <div style={{ textAlign: 'center' }}>
-        {card.name}
+      className = "tab"
+      style={style}
+    >
+      {cardTypeAsWord(type, true)}
+    </button>
+  );
+}
+
+const getMockData = () => {
+  return new Promise((resolve) => {
+    console.log('starting delay...')
+    setTimeout(() => {
+      // Start the timer
+      const result = mockData;
+      console.log('Getting mock data ', result)
+      resolve(result);
+    }, 1000);
+  });
+}
+
+function typeIdToString(typeId: number){
+  let result = 'other';
+  const conversionDict: { [key: number]: string } = {
+    4: 'minion',
+    5: 'quest',
+    40: 'reward',
+    42: 'spell',
+    43: 'other',
+    3: 'hero',
+  };
+  result = conversionDict[typeId] || 'Other';
+  return result;
+}
+
+
+
+
+interface BlizzardCard {
+  id: number;
+  name: string;
+  tier: number;
+  image: string;
+  text: string;
+  tribeIds: number[];
+  cardType: string;
+}
+
+const filterApiData = (allCardData:any) =>{
+  console.log('filtering data...');
+  if (!allCardData) {
+    console.error('No cards found in API data');
+    return {};
+  }
+  const cardsByType: { [key: string]: BlizzardCard[] } = {};
+  
+  
+  allCardData.cards.forEach((cardData) => {
+      
+    //const type = this.getCardTypeFromData(cardData);
+    
+    const tribeIds: number[]= []
+    
+    tribeIds.push(cardData.minionTypeId)
+    cardData.multiClassIds.forEach((id: number) => {
+      //console.log("ADDITIONAL  id = ", id)
+      tribeIds.push(id)
+    });
+    let cardTypeId = cardData.cardTypeId;
+    if (cardTypeId === 43){ // do this because 43 and 40 are both rewards so we just use rewards
+      cardTypeId = 40;
+      //console.log('cardTypeId = ', cardTypeId);
+    }
+    const typeKey = typeIdToString(cardData.cardTypeId);
+    const newCard = {
+      id: cardData.id,
+      name: cardData.name,
+      tier: cardData.battlegrounds.tier ?? 0,
+      image: cardData.battlegrounds.image,
+      text: cardData.text,
+      //type: type,
+      tribeIds: tribeIds,
+      cardType: typeKey,
+    };
+   
+    
+    if (cardsByType[typeKey] === undefined) {
+      cardsByType[typeKey] = [];
+    }
+    
+    cardsByType[typeKey].push(newCard);
+    
+      
+    
+  });
+  
+  for (const type in cardsByType) {
+    console.log(`${type} count = ${cardsByType[type].length}`)
+    if (cardsByType[type].length === 0){
+      continue;
+    }
+    const exampleCard = cardsByType[type][0];
+    if (exampleCard.tier){
+      if (exampleCard.tier !== undefined) {
+     
+        console.log(`${type} has tier! sorting... `)
+        cardsByType[type] = cardsByType[type].sort((a: BlizzardCard, b: BlizzardCard) => a.tier - b.tier);
+      }
+    }
+    
+  }
+  console.log('done filtering data')
+  return cardsByType;
+}
+
+
+
+
+const fetchData = async () =>{
+  
+  let cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds'
+  cardsUrl += '&pageSize=1000';
+  cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards/52119-arch-villain-rafaam'
+  let useLocalData = false;
+  let message = '';
+  useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
+  useLocalData = false;
+  let apiData:any = {};
+  if (useLocalData){
+    message = 'mock data override'
+    apiData = await getMockData();
+  }else{
+    const accessToken = await getBlizzardAccessToken();
+    
+    
+    apiData = await getDataFromApi(cardsUrl, accessToken);
+    console.log("api data after getting from api: ",apiData)
+    if (apiData == undefined) {
+      message = 'api failed, using mock data instead'
+      apiData = await getMockData();
+      
+    }
+    
+  }
+  
+  const cardData = filterApiData(apiData);
+  const result = {cards:cardData, done:true, message: message}
+  return result;
+}
+
+const getDataFromApi = async (url:string, access_token: string = '') => {
+  return new Promise((resolve) => {
+    console.log('getting data from url: ', url)
+    //console.log('access_token = ', access_token)
+    const config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: url,
+      headers: { 
+      
+        'Authorization': `Bearer ${access_token}`
+      }
+    };
+    
+    axios.request(config)
+    //axios.get(url, { headers: { 'Authorization': `Bearer ${access_token}` } })
+    .then((response) => {
+      console.log('attempting to print response')
+      console.log(JSON.stringify(response));
+      resolve(response.data);//.data;
+      
+    })
+    .catch(error => {
+      console.log('Error Response = ' , error.response)
+      if (error.response) {
+        // The server responded with a status code outside the 2xx range
+        console.log('Error response:', error.response);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.log('Error request:', error.request);
+      } else {
+        // Something happened in setting up the request that triggered an error
+        console.log('Error message:', error.message);
+      }
+      resolve(undefined)
+    });
+  });
+}
+
+
+
+function App() {
+  
+  
+  console.log('App    ')
+  
+  //tiltCard('tes')
+  const [apiData, setApiData] = useState({
+    cards:{},
+    done:false,
+    message: 'default message'
+  });
+  
+  const [curCardType, setCurCardType] = useState('minion');
+ 
+  useEffect(() => {
+    fetchData().then((res) => {
+      console.log('fetchData res = ', res)
+      setApiData(res);
+      
+    });
+  }, []);
+  
+
+  const disclaimer = "This website is not affiliated with Blizzard Entertainment."
+  
+  
+  return (
+    
+    <div 
+      className="App" 
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+      
+    >
+      
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', width: '50%', height:'100px' }}>
+        {Object.keys(apiData.cards).map((key) => (
+          <div key={key} onClick={() => setCurCardType(key)}>
+            {cardTypeTab(key, key === curCardType)}
+          </div>
+        ))}
       </div>
-      <div style={{ textAlign: 'center' }}>
-        {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
+      <div>
+        {cardGroupDisplay(apiData.cards[curCardType])}
+        
+      </div>
+      <div className="footer">
+        
+        <p>{disclaimer}</p>
       </div>
     </div>
     
-    return result;
+    
+  );
   
 }
 
-class App extends Component<object, AppState> {
-  
-  state: AppState = {
-    cards: {
-      "minion": [],
-      "hero": [],
-      "spell": [],
-      "other": [],
-    },
-    curCardType: "minion",
-  };
 
-  async getMockData(){
-    const result = mockData;
-    //console.log('Getting mock data ', result)
-    
-    return result;
-    
-  }
-  cardTypeTab(type: string){
-
-    return (
-      <button 
-        onClick={() => this.cardTypeTabClicked(type)}
-        style={{ margin: '10px', padding: '10px' }}
-      >
-        {type}
-      </button>
-    );
-  }
-  cardTypeTabClicked(type: string){
-    
-    this.setState({ curCardType: type });
-  
-  }
-  componentDidMount() {
-    console.log('Component did mount')
-    this.fetchData();
-  }
-
-  getCardTypeFromData(cardData: any) {
-    let result = "minion";
-    if (cardData.battlegrounds.hero == true) {
-      result = 'hero';
-    } else if (cardData.battlegrounds.quest == true) {
-      result = 'quest';
-    } else if ("spellSchoolId" in cardData) {
-      result = 'spell';
-    }
-
-    return result;
-  }
-
-  async fetchData() {
-    console.log('Fetching data...')
-    
-    
-    
-    
-    const tempCards: { [key: string]: BlizzardCard[] } = {};
-
-    Object.keys(this.state.cards).forEach((type) => {
-      
-      tempCards[type] = [];
-
-    });
-    console.log('tempCards = ', tempCards);
-    
-    let apiData = null;
-    const useLocalData = true;
-    if (useLocalData){
-      
-      apiData = await this.getMockData();
-      console.log("local api data = ", apiData)
-    
-    }else{
-      try{
-        const accessToken = await getBlizzardAccessToken();
-
-        const headers = {
-          Authorization: `Bearer ${accessToken}`,
-        };
-        let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-        url += '&pageSize=100'
-        //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
-  
-        const response = await axios.get(url, { headers });
-        apiData = response.data;
-      }catch(error){
-        console.error('Error fetching data from api:', error);
-      }
-      
-    }
-    if (apiData) {
-      
-      apiData.cards.forEach((cardData: any) => {
-        
-        const type = this.getCardTypeFromData(cardData);
-        let tribeIds = []
-        
-        tribeIds.push(cardData.minionTypeId)
-        cardData.multiClassIds.forEach((id: any) => {
-          console.log("ADDITIONAL  id = ", id)
-          tribeIds.push(id)
-        });
-        
-        const newCard: BlizzardCard = {
-          id: cardData.id,
-          name: cardData.name,
-          tier: cardData.battlegrounds.tier,
-          image: cardData.battlegrounds.image,
-          text: cardData.text,
-          type: type,
-          tribeIds: tribeIds
-        };
-        
-        try{
-          tempCards[type].push(newCard);
-        }catch(error){
-          console.error('Error adding ',type,' card to tempCards:', tempCards);
-        }
-        
-          
-        
-      });
-      //const sortedMinions = minions.sort((a, b) => a.tier - b.tier);
-      for (const type in tempCards) {
-        console.log(`${type} size = ${tempCards[type].length}`)
-      }
-      this.setState({
-        cards: {
-          "minion": tempCards.minion,
-          "hero": tempCards.hero,
-          "spell": tempCards.spell,
-          "other": tempCards.other,
-        }
-      });
-      
-    } 
-    
-  }
-  
-
-  render() {
-    const curCardGroup = this.state.cards[this.state.curCardType as keyof typeof this.state.cards];
-    console.log('curCardGroup  size = ', curCardGroup.length);
-    return (
-      <>
-        {Object.keys(this.state.cards).map((cardType: string) => this.cardTypeTab(cardType))}
-        <div>
-          {curCardGroup.length > 0 ? (
-            <ul>
-              {cardGroupDisplay(curCardGroup)}
-            </ul>
-          ) : (
-            <p>Loading cards...</p>
-          )}
-        </div>
-      </>
-    );
-  }
-}
 
 export default App;
