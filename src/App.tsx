@@ -1,17 +1,13 @@
-import { Component} from 'react'
-import {motion, useMotionValue, useSpring, useTransform} from 'framer-motion'
+
 import './App.css'
 
-import axios, { AxiosRequestConfig } from 'axios';
+
 import { Buffer } from 'buffer';
 import { useEffect, useState } from 'react';
-//import { render } from 'react-dom';
-//import fs from 'fs';
-import { mockData } from './mockData';
-import { setDefaultAutoSelectFamilyAttemptTimeout } from 'net';
-import { get } from 'http';
-import { resolve } from 'path';
 
+import { mockData } from './mockData';
+
+import axios from 'axios';
 import { Tilt } from "react-tilt";
 
 
@@ -112,7 +108,7 @@ function tribeIdsToWords(minionIds: number[]) {
   return result
 }
 
-function cardGroupDisplay(cards) {
+function cardGroupDisplay(cards: BlizzardCard[] | undefined) {
   if (cards === undefined) {  
     return (
       <p>Loading cards....</p>
@@ -131,55 +127,6 @@ function cardGroupDisplay(cards) {
   
 }
 
-const CardDisplayOld = (card: BlizzardCard) => {
-  
-  //const [count, setCount ] = useState(0);
-  //const x = useMotionValue(0);
-  //const y = useMotionValue(0);
-  //const mouseXSpring = useSpring(x);
-  //const mouseYSpring = useSpring(y);
-
-  //const rotateX = useTransform(mouseYSpring, [-.5, .5], ["17.5deg", "-17.5deg"]);
-  //const rotateYSpring = useSpring(y)
-  const handleMouseMove = (event) => {
-    const rect =  event.target.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    const valFromTutorial = .5
-    const xPercent = mouseX / width - valFromTutorial;
-    const yPercent = mouseY / height - valFromTutorial;
-    
-    //console.log('w = ', mouseX, ' h = ', mouseY)
-    //x.set(xPercent);
-    //y.set(yPercent);
-  }
-  return(
-    <motion.div key={card.id} style={{ width: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
-      <div 
-        style={{ position: 'relative',transformStyle: "preserve-3d",}}
-        onMouseMove = {handleMouseMove}
-      >
-        <img src={card.image} alt={card.name} style={{ transformStyle: "preserve-3d", width: '100%', height: 'auto' }} />
-        
-      </div>
-      <div style={{ textAlign: 'center' }}>
-          {card.name}
-      </div>
-      <div style={{ textAlign: 'center' }}>
-        {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
-      </div>
-      
-      
-    </motion.div>
-  );
-  
-}
-
-
 const CardDisplay = (card: BlizzardCard) => {
   const tiltOptions = {
   
@@ -196,7 +143,7 @@ const CardDisplay = (card: BlizzardCard) => {
   }
   
   
-  let result = (
+  return (
     
 
     <div 
@@ -237,33 +184,36 @@ const CardDisplay = (card: BlizzardCard) => {
     
   );
   
-  return result;
+  
 }
 
 
 
 function cardTypeTab(type: string, isSelected: boolean = false){
-  let borderSize = '2.5px'
-  let offset = '0px';
-  let tabClass = "tab";
-  let color = 'white'; // default color
-  let textColor = ''
+  const borderSize = '2.5px'
   
-  let b = `${borderSize} solid ${color}`;
-  let style = { 
+  
+  
+  
+  
+  const b = `${borderSize} solid`;
+  const style = { 
     margin: '4px', 
     padding: '10px', 
     width: '125px', 
     
-    position: 'relative', 
+    
     color: 'white',
     backgroundColor: 'rgba(1,1,1,1)',
     borderBottom: b,
+    borderTop:'none',
+    borderRight:'none',
+    borderLeft : 'none',
   }
   if (isSelected){
     
     style.borderBottom = 'none';
-    style.borderTop = b
+    style.borderTop = b;
     style.borderRight = b;
     style.borderLeft = b;
     style.backgroundColor = 'rgba(1,1,1,0)';
@@ -282,7 +232,7 @@ function cardTypeTab(type: string, isSelected: boolean = false){
 }
 
 const getMockData = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     console.log('starting delay...')
     setTimeout(() => {
       // Start the timer
@@ -320,22 +270,23 @@ interface BlizzardCard {
   cardType: string;
 }
 
-const filterApiData = (apiData) =>{
-  console.log('filtering data...')
-  if (!apiData || !apiData.cards) {
+const filterApiData = (allCardData:any) =>{
+  console.log('filtering data...');
+  if (!allCardData) {
     console.error('No cards found in API data');
     return {};
   }
-  const cardsByType: { [key: string]: [] } = {};
+  const cardsByType: { [key: string]: BlizzardCard[] } = {};
   
-  apiData.cards.forEach((cardData: any) => {
+  
+  allCardData.cards.forEach((cardData) => {
       
     //const type = this.getCardTypeFromData(cardData);
     
-    let tribeIds = []
+    const tribeIds: number[]= []
     
     tribeIds.push(cardData.minionTypeId)
-    cardData.multiClassIds.forEach((id) => {
+    cardData.multiClassIds.forEach((id: number) => {
       //console.log("ADDITIONAL  id = ", id)
       tribeIds.push(id)
     });
@@ -398,7 +349,7 @@ const fetchData = async () =>{
   let message = '';
   useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
   useLocalData = false;
-  let apiData = {};
+  let apiData:any = {};
   if (useLocalData){
     message = 'mock data override'
     apiData = await getMockData();
@@ -461,20 +412,6 @@ const getDataFromApi = async (url:string, access_token: string = '') => {
 }
 
 
-function tiltCards(contents = ''){
- 
-  VanillaTilt.init(document.querySelectorAll(".tiltCard"), {
-    max: 25,
-    speed: 400,
-    scale:.5,
-    glare: true,
-    "max-glare": 1
-  });
-
-  
-
-}
-
 
 function App() {
   
@@ -499,7 +436,7 @@ function App() {
   }, []);
   
 
-  let disclaimer = "This website is not affiliated with Blizzard Entertainment."
+  const disclaimer = "This website is not affiliated with Blizzard Entertainment."
   
   
   return (
