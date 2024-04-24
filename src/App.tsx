@@ -12,6 +12,7 @@ import { setDefaultAutoSelectFamilyAttemptTimeout } from 'net';
 import { get } from 'http';
 import { resolve } from 'path';
 
+import { Tilt } from "react-tilt";
 
 
 
@@ -30,12 +31,15 @@ const getBlizzardAccessToken = (): Promise<string> => {
         Authorization: `Basic ${authorization}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       };
+      //console.log('auth: ', headers.Authorization)
       const data = 'grant_type=client_credentials';
 
       axios.post('https://oauth.battle.net/token', data, { headers })
+      //axios.post('https://us.battle.net/oauth/token?grant_type=client_credentials&client_id=421d99830f0447cc888e5a2889dd3bc1&client_secret=G2MukytybhQmFP50M4FOY3fZ8MQbCpf6')
         .then(response => {
           if (response.status === 200) {
             console.log("Get access token successful")
+            //console.log("access token: " , response.data.access_token)
             resolve(response.data.access_token);
           } else {
             reject(new Error(`Failed to retrieve access token: ${response.statusText}`));
@@ -56,15 +60,22 @@ const getBlizzardAccessToken = (): Promise<string> => {
 
 function cardTypeAsWord(cardType: string, isPlural: boolean = false) {  
   //console.log("cardTypeIdToWords = ", cardTypeId)
-  let result = cardType.charAt(0).toUpperCase() + cardType.slice(1);
+  let result = cardType
+  
 
   
   if (isPlural) {
-    if (result === 'Hero') {
+    if (cardType === 'hero') {
       result += 'e';
     }
-    result += 's';
+    if (cardType != 'other'){
+      result += 's';
+    }
+     
   }
+  
+  result = result.charAt(0).toUpperCase() + result.slice(1);
+  
   return result;
 
 }
@@ -104,7 +115,7 @@ function tribeIdsToWords(minionIds: number[]) {
 function cardGroupDisplay(cards) {
   if (cards === undefined) {  
     return (
-      <p>Loading cards...</p>
+      <p>Loading cards....</p>
     );
   }
   return (
@@ -113,14 +124,15 @@ function cardGroupDisplay(cards) {
       {cards.map((card: BlizzardCard) => (
         CardDisplay(card)
       ))}
+     
     </div>
     
   )
   
 }
 
-const CardDisplay = (card: BlizzardCard) => {
-
+const CardDisplayOld = (card: BlizzardCard) => {
+  
   //const [count, setCount ] = useState(0);
   //const x = useMotionValue(0);
   //const y = useMotionValue(0);
@@ -140,6 +152,7 @@ const CardDisplay = (card: BlizzardCard) => {
     const valFromTutorial = .5
     const xPercent = mouseX / width - valFromTutorial;
     const yPercent = mouseY / height - valFromTutorial;
+    
     //console.log('w = ', mouseX, ' h = ', mouseY)
     //x.set(xPercent);
     //y.set(yPercent);
@@ -151,6 +164,7 @@ const CardDisplay = (card: BlizzardCard) => {
         onMouseMove = {handleMouseMove}
       >
         <img src={card.image} alt={card.name} style={{ transformStyle: "preserve-3d", width: '100%', height: 'auto' }} />
+        
       </div>
       <div style={{ textAlign: 'center' }}>
           {card.name}
@@ -165,6 +179,66 @@ const CardDisplay = (card: BlizzardCard) => {
   
 }
 
+
+const CardDisplay = (card: BlizzardCard) => {
+  const tiltOptions = {
+  
+   
+    reverse:        false,  // reverse the tilt direction
+    max:            35,     // max tilt rotation (degrees)
+    perspective:    1000,   // Transform perspective, the lower the more extreme the tilt gets.
+    scale:          1.2,    // 2 = 200%, 1.5 = 150%, etc..
+    speed:          1000,   // Speed of the enter/exit transition
+    transition:     true,   // Set a transition on enter/exit.
+    axis:           null,   // What axis should be disabled. Can be X or Y.
+    reset:          true,    // If the tilt effect has to be reset on exit.
+    easing:         "cubic-bezier(.03,.98,.52,.99)",    // Easing on enter/exit.
+  }
+  
+  
+  let result = (
+    
+
+    <div 
+      
+      key={card.id}
+      style={{
+         
+        
+
+        width: '180px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        margin: '10px' 
+      }}>
+      <Tilt 
+        options={tiltOptions}
+        style={{ transform: "translateZ(105px)"}}
+        
+      >
+        <img src={card.image} alt={card.name} style={{ width: '100%', height: 'auto' }} />
+        
+      </Tilt>
+      <div style={{  textAlign: 'center' }}>
+          <div>
+            {card.name}
+          </div>
+          <div>
+            {tribeIdsToWords(card.tribeIds.toString().split(',').map(Number))}
+          </div>
+          
+      </div>
+    
+      
+      
+      <script type="text/javascript" src="vanilla-tilt.js"></script>
+    </div>
+    
+  );
+  
+  return result;
+}
 
 
 
@@ -226,70 +300,25 @@ function typeIdToString(typeId: number){
     5: 'quest',
     40: 'reward',
     42: 'spell',
-    43: 'reward',
+    43: 'other',
     3: 'hero',
   };
   result = conversionDict[typeId] || 'Other';
   return result;
 }
 
-async function fetchDataOld() {
 
-  
-    
-  const cardsByType: { [key: string]: [] } = {};
-  
-  console.log('Fetching data...')
-    
-  let apiData = null;
-  let useLocalData = false;
 
-  useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
-  useLocalData = false;
-  console.log('use local Data = ', useLocalData);
-  
-  if (!useLocalData){
-    console.log('fetching data from api')
-    
-      
-    const accessToken = await getBlizzardAccessToken();
-    
-    console.log('accessToken = ', accessToken)
-    const headers = {
-      Authorization: `Bearer ${accessToken}`,
-    };
-    let url = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds';
-    //url += '&pageSize=1000'
-    //const url = 'https://us.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds';
 
-   
-    try{
-      //const response = await axios.get(url, { headers });
-      
-      //console.log('API request status:', response.status);
-      apiData = await getDataFromApi(accessToken);
-      console.log('apiData = ', apiData)
-    }catch(error){
-      console.error('API GET CARDS error = ', error)
-    }
-    
-    
-    
-  }
-  if (useLocalData){
-    console.log('fetching local data')
-    apiData = await getMockData();
-    //console.log("local api data = ", apiData)
-  
-  }
-  if (apiData) {
-    return filterApiData(apiData);
-    
-    
-  } 
+interface BlizzardCard {
+  id: number;
+  name: string;
+  tier: number;
+  image: string;
+  text: string;
+  tribeIds: number[];
+  cardType: string;
 }
-
-
 
 const filterApiData = (apiData) =>{
   console.log('filtering data...')
@@ -358,41 +387,38 @@ const filterApiData = (apiData) =>{
 }
 
 
-interface BlizzardCard {
-  id: string;
-  name: string;
-  tier: number;
-  image: string;
-  text: string;
-  tribeIds: number[];
-  cardType: string;
-}
-
-
-
 
 
 const fetchData = async () =>{
   
   let cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards?locale=en_US&gameMode=battlegrounds'
   cardsUrl += '&pageSize=1000';
+  cardsUrl = 'https://us.api.blizzard.com/hearthstone/cards/52119-arch-villain-rafaam'
   let useLocalData = false;
-  
+  let message = '';
   useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
   useLocalData = false;
   let apiData = {};
   if (useLocalData){
+    message = 'mock data override'
     apiData = await getMockData();
   }else{
     const accessToken = await getBlizzardAccessToken();
     
     
     apiData = await getDataFromApi(cardsUrl, accessToken);
-    console.log(apiData)
+    console.log("api data after getting from api: ",apiData)
+    if (apiData == undefined) {
+      message = 'api failed, using mock data instead'
+      apiData = await getMockData();
+      
+    }
+    
   }
   
   const cardData = filterApiData(apiData);
-  return cardData;
+  const result = {cards:cardData, done:true, message: message}
+  return result;
 }
 
 const getDataFromApi = async (url:string, access_token: string = '') => {
@@ -429,48 +455,81 @@ const getDataFromApi = async (url:string, access_token: string = '') => {
         // Something happened in setting up the request that triggered an error
         console.log('Error message:', error.message);
       }
-      resolve({})
+      resolve(undefined)
     });
   });
 }
 
 
+function tiltCards(contents = ''){
+ 
+  VanillaTilt.init(document.querySelectorAll(".tiltCard"), {
+    max: 25,
+    speed: 400,
+    scale:.5,
+    glare: true,
+    "max-glare": 1
+  });
+
+  
+
+}
+
 
 function App() {
   
   
-  console.log('App')
+  console.log('App    ')
   
+  //tiltCard('tes')
+  const [apiData, setApiData] = useState({
+    cards:{},
+    done:false,
+    message: 'default message'
+  });
   
-  const [cardData, setCardData] = useState({});
- 
   const [curCardType, setCurCardType] = useState('minion');
  
   useEffect(() => {
     fetchData().then((res) => {
       console.log('fetchData res = ', res)
-      setCardData(res);
+      setApiData(res);
+      
     });
   }, []);
   
-  
 
+  let disclaimer = "This website is not affiliated with Blizzard Entertainment."
+  
+  
   return (
-    <div className="App" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    
+    <div 
+      className="App" 
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
       
-     
+    >
+      
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', width: '50%' }}>
-        {Object.keys(cardData).map((key) => (
+        {Object.keys(apiData.cards).map((key) => (
           <div key={key} onClick={() => setCurCardType(key)}>
             {cardTypeTab(key, key === curCardType)}
           </div>
         ))}
       </div>
       <div>
-        {cardGroupDisplay(cardData[curCardType])}
+        {cardGroupDisplay(apiData.cards[curCardType])}
+        
+      </div>
+      <div className="footer">
+        
+        <p>{disclaimer}</p>
       </div>
     </div>
+    
+    
   );
+  
 }
 
 
