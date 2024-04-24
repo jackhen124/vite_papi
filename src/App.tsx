@@ -201,17 +201,18 @@ function cardTypeTab(type: string, isSelected: boolean = false){
     margin: '4px', 
     padding: '10px', 
     width: '125px', 
+    height: '70%',
     
-    
-    color: 'white',
+    color: 'lightgray',
     backgroundColor: 'rgba(1,1,1,1)',
     borderBottom: b,
     borderTop:'none',
     borderRight:'none',
     borderLeft : 'none',
+    fontSize : '1.4em',
   }
   if (isSelected){
-    
+    style.color = 'white';
     style.borderBottom = 'none';
     style.borderTop = b;
     style.borderRight = b;
@@ -447,7 +448,7 @@ function App() {
       
     >
       
-      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', width: '50%' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', width: '50%', height:'100px' }}>
         {Object.keys(apiData.cards).map((key) => (
           <div key={key} onClick={() => setCurCardType(key)}>
             {cardTypeTab(key, key === curCardType)}
