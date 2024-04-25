@@ -349,7 +349,7 @@ const fetchData = async () =>{
   let useLocalData = false;
   let message = '';
   useLocalData = import.meta.env.VITE_USE_MOCK_DATA !== undefined ? Boolean(import.meta.env.VITE_USE_MOCK_DATA) : false;
-  useLocalData = false;
+  useLocalData = true;
   let apiData:any = {};
   if (useLocalData){
     message = 'mock data override'
